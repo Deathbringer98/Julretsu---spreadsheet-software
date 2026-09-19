@@ -1,7 +1,11 @@
-Julretsu Proprietary License
-Version 1.0
+Julretsu Software License
+Version 2.0
 
 Copyright (c) 2026 Matthew Menchinton. All rights reserved.
+
+In short: you may use Julretsu for free. You do not own it. Matthew Menchinton
+owns Julretsu and everything in it. This short summary is not part of the
+license; the terms below govern.
 
 1. OWNERSHIP
 
@@ -12,39 +16,45 @@ exclusive property of Matthew Menchinton (the "Owner"). All right, title, and
 interest in and to the Software, including all copyrights, trademarks, trade
 secrets, and other intellectual property rights, are and remain with the Owner.
 
-The Software is NOT open source. It is not licensed under any open-source
-license, and no open-source license applies to it.
+The Software is licensed, not sold. Using, downloading, or building it does not
+transfer ownership of the Software or any copy of it to you.
 
-2. NO LICENSE GRANTED
+The Software is not open source. No open-source license applies to it.
 
-Except for the limited viewing permission in Section 3, no license or right of
-any kind is granted to you, whether expressly, by implication, by estoppel, or
-otherwise. The fact that the Software is publicly visible does not grant you
-any right to use it.
+2. PERMISSION TO USE
 
-3. LIMITED PERMISSION TO VIEW
+Subject to this license, the Owner grants you a free, non-exclusive,
+non-transferable, non-sublicensable, revocable license to:
 
-If this repository is publicly accessible, you may view the Software on the
-hosting platform, and the platform may display it and let you fork it, solely
-as required by that platform's terms of service. That permission does not
-extend to any other use.
+  (a) download, install, and run the Software on devices you own or control;
+  (b) build the unmodified source code solely to run it yourself;
+  (c) use the Software for personal, educational, and business work, including
+      creating, editing, and sharing your own spreadsheets and other files
+      with it.
+
+3. YOUR CONTENT
+
+Workbooks, data, formulas, scripts, and other files you create with the
+Software belong to you. The Owner claims no rights in them.
 
 4. RESTRICTIONS
 
-Without the Owner's prior written permission, you may not, in whole or in part:
+Except where the Owner gives prior written permission, you may not, in whole or
+in part:
 
-  (a) copy, reproduce, or download the Software for any purpose other than
-      viewing it as allowed in Section 3;
-  (b) use, install, build, compile, or run the Software;
-  (c) modify, adapt, translate, or create derivative works of the Software;
-  (d) distribute, publish, sublicense, sell, rent, lease, lend, or otherwise
-      make the Software available to anyone;
-  (e) use the Software, or any part of it, in any other product or service,
-      commercial or non-commercial;
-  (f) use the Software, or any part of it, to train, fine-tune, or evaluate
+  (a) claim ownership or authorship of the Software, or remove, alter, or
+      obscure any copyright, ownership, or license notice;
+  (b) sell, rent, lease, lend, sublicense, or charge anyone for the Software,
+      or offer it as a hosted or paid service;
+  (c) distribute, publish, or share copies of the Software, modified or not.
+      Direct others to the Owner's official source instead;
+  (d) modify, adapt, translate, or create derivative works of the Software, or
+      incorporate any part of it into other software;
+  (e) use the Software, or any part of it, to train, fine-tune, or evaluate
       any machine-learning or artificial-intelligence model;
-  (g) remove, alter, or obscure any copyright, ownership, or license notice;
-  (h) use the name "Julretsu" or any of the Owner's logos, icons, or artwork.
+  (f) use the name "Julretsu", or the Owner's logos, icons, or artwork, for
+      your own products or in a way that suggests endorsement;
+  (g) use the Software in violation of any applicable law.
 
 5. CONTRIBUTIONS
 
@@ -64,35 +74,43 @@ license does not apply to those components and does not restrict any rights
 you have under their licenses. Those rights cover only the third-party
 components themselves and give you no rights in the Owner's Software.
 
-7. PERMISSIONS AND FUTURE LICENSING
+7. THIRD-PARTY SERVICES
 
-Any permission beyond this license must be given by the Owner in writing. The
-Owner may license, relicense, sell, or release the Software, including under an
-open-source license, at any time and on any terms. Any such future release
-applies only to the versions and terms the Owner specifies.
+The optional AI assistant connects to services you choose, such as an AI
+provider, using your own account and credentials. Your use of those services
+is governed by your agreement with that provider, including any fees they
+charge. The Owner is not responsible for those services.
 
-8. TERMINATION
+8. CHANGES AND FUTURE LICENSING
 
-Any use of the Software that violates this license is unauthorized and may
-infringe the Owner's copyright and other rights. The Owner may enforce these
-rights by any lawful means. If you have obtained a copy of the Software in
-violation of this license, you must delete all copies in your possession or
-control.
+The Owner may license, relicense, sell, or release the Software, including
+under an open-source license, at any time and on any terms. Future versions may
+be offered under different terms. Any such change applies only to the versions
+and terms the Owner specifies.
 
-9. NO WARRANTY
+9. TERMINATION
+
+This license ends automatically if you break any of its terms. The Owner may
+also end it for any user by written notice. When it ends, you must stop using
+the Software and delete all copies in your possession or control. Sections 1,
+3, 5, 6, and 9 through 12 survive termination. The Owner may enforce these
+rights by any lawful means.
+
+10. NO WARRANTY
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. YOU ARE RESPONSIBLE FOR
+KEEPING BACKUPS OF YOUR DATA.
 
-10. LIMITATION OF LIABILITY
+11. LIMITATION OF LIABILITY
 
 TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL THE OWNER BE LIABLE
-FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR
-THE USE OF OR OTHER DEALINGS IN THE SOFTWARE.
+FOR ANY CLAIM, DAMAGES, LOSS OF DATA, OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH
+THE SOFTWARE OR THE USE OF OR OTHER DEALINGS IN THE SOFTWARE.
 
-11. GENERAL
+12. GENERAL
 
 If any provision of this license is held unenforceable, the remaining
 provisions remain in full effect. The Owner's failure to enforce any provision

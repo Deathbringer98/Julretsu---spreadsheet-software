@@ -2,7 +2,7 @@
 ### A native spreadsheet workbench
 
 Julretsu now includes a Windows-tested native ImGui application, a sparse C++20
-spreadsheet engine, and bounded Lua formulas/macros. Project source is proprietary (all rights reserved); see [LICENSE](LICENSE).
+spreadsheet engine, and bounded Lua formulas/macros. Julretsu is free to use but owned by Matthew Menchinton; it is not open source. See [LICENSE](LICENSE).
 The architecture also targets Linux and macOS; those builds have not been run
 locally in this Windows session.
 

@@ -1,6 +1,6 @@
 # Third-party notices
 
-Julretsu project code is original and proprietary (all rights reserved); see LICENSE.
+Julretsu project code is original and owned by Matthew Menchinton. It is free to use under the terms in LICENSE, but not open source.
 The components below keep their own licenses; the Julretsu license does not cover them.
 The dependency-free headless core contains no copied third-party library source.
 
