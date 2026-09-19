@@ -1,0 +1,347 @@
+#include "julretsu/GridUI.hpp"
+#include "julretsu/Branding.hpp"
+#include "julretsu/AllocationMetrics.hpp"
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+#include <GLFW/glfw3.h>
+#include <algorithm>
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <vector>
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#include <psapi.h>
+#else
+#include <sys/resource.h>
+#endif
+
+namespace {
+using Clock=std::chrono::steady_clock;
+struct GLFWLifetime {
+    GLFWLifetime() {
+        glfwSetErrorCallback([](int,const char* error){std::cerr<<"GLFW: "<<error<<'\n';});
+        if(!glfwInit()) throw std::runtime_error("Unable to initialize GLFW. Check your graphics driver.");
+    }
+    ~GLFWLifetime() { glfwTerminate(); }
+};
+struct ImGuiLifetime {
+    bool glfw{}, gl{};
+    ImGuiLifetime() { IMGUI_CHECKVERSION(); ImGui::CreateContext(); }
+    ~ImGuiLifetime() {
+        if(gl) ImGui_ImplOpenGL3_Shutdown();
+        if(glfw) ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
+    }
+};
+void theme(float scale,bool dark=false) {
+    ImGui::StyleColorsLight(); auto& s=ImGui::GetStyle();
+    s.WindowPadding={16,14}; s.FramePadding={10,7}; s.ItemSpacing={9,8};
+    s.WindowRounding=0; s.ChildRounding=6; s.FrameRounding=4;
+    s.Colors[ImGuiCol_WindowBg]={0.975f,0.98f,0.985f,1};
+    s.Colors[ImGuiCol_ChildBg]={1,1,1,1};
+    s.Colors[ImGuiCol_Text]={0.12f,0.17f,0.22f,1};
+    s.Colors[ImGuiCol_TextDisabled]={0.43f,0.48f,0.52f,1};
+    s.Colors[ImGuiCol_Button]={0.90f,0.94f,0.93f,1};
+    s.Colors[ImGuiCol_ButtonHovered]={0.78f,0.89f,0.85f,1};
+    s.Colors[ImGuiCol_ButtonActive]={0.65f,0.83f,0.76f,1};
+    s.Colors[ImGuiCol_FrameBg]={1,1,1,1};
+    s.Colors[ImGuiCol_Border]={0.83f,0.87f,0.88f,1};
+    s.Colors[ImGuiCol_CheckMark]={0.10f,0.48f,0.36f,1};
+    s.Colors[ImGuiCol_SliderGrab]={0.10f,0.48f,0.36f,1};
+    s.Colors[ImGuiCol_Header]={0.79f,0.9f,0.85f,1};
+    s.FrameRounding=6; s.ChildRounding=9; s.WindowPadding={12,12};
+    s.Colors[ImGuiCol_Button]={0.95f,0.975f,0.975f,1};
+    if(dark) {
+        s.Colors[ImGuiCol_WindowBg]={0.07f,0.105f,0.14f,1};
+        s.Colors[ImGuiCol_ChildBg]={0.085f,0.125f,0.16f,1};
+        s.Colors[ImGuiCol_PopupBg]={0.11f,0.155f,0.19f,1};
+        s.Colors[ImGuiCol_Text]={0.88f,0.92f,0.95f,1};
+        s.Colors[ImGuiCol_TextDisabled]={0.59f,0.68f,0.74f,1};
+        s.Colors[ImGuiCol_Button]={0.13f,0.19f,0.23f,1};
+        s.Colors[ImGuiCol_ButtonHovered]={0.18f,0.32f,0.30f,1};
+        s.Colors[ImGuiCol_ButtonActive]={0.19f,0.41f,0.35f,1};
+        s.Colors[ImGuiCol_FrameBg]={0.10f,0.15f,0.19f,1};
+        s.Colors[ImGuiCol_FrameBgHovered]={0.15f,0.24f,0.27f,1};
+        s.Colors[ImGuiCol_FrameBgActive]={0.17f,0.29f,0.29f,1};
+        s.Colors[ImGuiCol_Border]={0.21f,0.28f,0.33f,1};
+        s.Colors[ImGuiCol_Separator]=s.Colors[ImGuiCol_Border];
+        s.Colors[ImGuiCol_CheckMark]={0.36f,0.82f,0.66f,1};
+        s.Colors[ImGuiCol_SliderGrab]=s.Colors[ImGuiCol_CheckMark];
+        s.Colors[ImGuiCol_SliderGrabActive]={0.54f,0.94f,0.78f,1};
+        s.Colors[ImGuiCol_Header]={0.14f,0.29f,0.25f,1};
+        s.Colors[ImGuiCol_HeaderHovered]={0.17f,0.37f,0.31f,1};
+        s.Colors[ImGuiCol_HeaderActive]=s.Colors[ImGuiCol_HeaderHovered];
+        s.Colors[ImGuiCol_TextSelectedBg]={0.16f,0.42f,0.35f,0.8f};
+        s.Colors[ImGuiCol_TitleBgActive]=s.Colors[ImGuiCol_Header];
+    }
+    s.ScaleAllSizes(scale);
+}
+void font(float scale) {
+    auto& io=ImGui::GetIO(); io.Fonts->Clear();
+    ImFontConfig config; config.SizePixels=20*scale;
+#ifdef _WIN32
+    // OS-provided font; not redistributed. ASCII branding needs no CJK font.
+    if(!io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segoeui.ttf",20*scale))
+        io.Fonts->AddFontDefault(&config);
+#else
+    io.Fonts->AddFontDefault(&config);
+#endif
+}
+void screenshot(const std::string& path,int width,int height) {
+    if(width<=0||height<=0) return;
+    const auto stride=(std::size_t(width)*3+3)&~std::size_t(3);
+    std::vector<unsigned char> pixels(stride*std::size_t(height));
+    glPixelStorei(GL_PACK_ALIGNMENT,4);
+    glReadPixels(0,0,width,height,GL_RGB,GL_UNSIGNED_BYTE,pixels.data());
+    for(int y=0;y<height;++y) for(int x=0;x<width;++x) std::swap(pixels[std::size_t(y)*stride+std::size_t(x)*3],pixels[std::size_t(y)*stride+std::size_t(x)*3+2]);
+    std::ofstream file(path,std::ios::binary); if(!file) throw std::runtime_error("Cannot write screenshot");
+    auto u16=[&](unsigned v){file.put(char(v));file.put(char(v>>8));};
+    auto u32=[&](std::uint32_t v){for(int i=0;i<4;++i) file.put(char(v>>(8*i)));};
+    file.write("BM",2); u32(std::uint32_t(54+pixels.size())); u32(0); u32(54);
+    u32(40); u32(unsigned(width)); u32(unsigned(height)); u16(1); u16(24); u32(0); u32(std::uint32_t(pixels.size())); u32(2835);u32(2835);u32(0);u32(0);
+    file.write(reinterpret_cast<const char*>(pixels.data()),std::streamsize(pixels.size()));
+}
+std::size_t memory_bytes() {
+#ifdef _WIN32
+    PROCESS_MEMORY_COUNTERS memory{};
+    return GetProcessMemoryInfo(GetCurrentProcess(),&memory,sizeof memory)?memory.WorkingSetSize:0;
+#else
+    rusage usage{}; if(getrusage(RUSAGE_SELF,&usage)!=0) return 0;
+#ifdef __APPLE__
+    return std::size_t(usage.ru_maxrss);
+#else
+    return std::size_t(usage.ru_maxrss)*1024;
+#endif
+#endif
+}
+}
+int main(int argc,char** argv) {
+    bool smoke=false, benchmark=false, show=false, no_splash=false;
+    std::string capture="julretsu";
+    for(int i=1;i<argc;++i) {
+        std::string arg=argv[i];
+        if(arg=="--smoke") smoke=true;
+        else if(arg=="--benchmark") benchmark=true;
+        else if(arg=="--visible") show=true;
+        else if(arg=="--no-splash") no_splash=true;
+        else if(arg=="--capture-prefix"&&i+1<argc) capture=argv[++i];
+    }
+    try {
+        GLFWLifetime glfw;
+#ifdef __APPLE__
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,3); glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,2);
+        glfwWindowHint(GLFW_OPENGL_PROFILE,GLFW_OPENGL_CORE_PROFILE); glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT,GL_TRUE);
+        const char* glsl="#version 150";
+#else
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,3); glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,3);
+        glfwWindowHint(GLFW_OPENGL_PROFILE,GLFW_OPENGL_CORE_PROFILE);
+        const char* glsl="#version 330";
+#endif
+        // Show the first rendered frame instead of a blank startup window.
+        glfwWindowHint(GLFW_VISIBLE,GLFW_FALSE);
+        using Window=std::unique_ptr<GLFWwindow,decltype(&glfwDestroyWindow)>;
+        Window window(glfwCreateWindow(1580,960,"Julretsu - Spreadsheet",nullptr,nullptr),glfwDestroyWindow);
+        if(!window) throw std::runtime_error("OpenGL window creation failed.");
+        glfwSetWindowSizeLimits(window.get(),1100,640,GLFW_DONT_CARE,GLFW_DONT_CARE);
+        glfwMakeContextCurrent(window.get()); glfwSwapInterval(benchmark||smoke?0:1);
+        ImGui::SetAllocatorFunctions(
+            [](std::size_t n,void*)->void* { ++julretsu::metrics::imgui_allocations; julretsu::metrics::imgui_bytes+=n; return std::malloc(n); },
+            [](void* p,void*){std::free(p);});
+        ImGuiLifetime gui;
+        auto& io=ImGui::GetIO(); io.IniFilename=nullptr;
+        io.ConfigFlags|=ImGuiConfigFlags_NavEnableKeyboard;
+        float sx=1,sy=1; glfwGetWindowContentScale(window.get(),&sx,&sy);
+        float scale=std::clamp(std::max(sx,sy),1.0f,2.5f);
+        theme(scale); font(scale);
+        if(!ImGui_ImplGlfw_InitForOpenGL(window.get(),true)) throw std::runtime_error("ImGui GLFW initialization failed.");
+        gui.glfw=true;
+        if(!ImGui_ImplOpenGL3_Init(glsl)) throw std::runtime_error("ImGui OpenGL initialization failed.");
+        gui.gl=true;
+        julretsu::Branding branding(window.get());
+        const auto splash_start=Clock::now();
+        auto loading_frame=[&](const char* status,bool capture_image=false) {
+            glfwPollEvents();
+            ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame();
+            branding.draw(status); ImGui::Render();
+            int width{},height{}; glfwGetFramebufferSize(window.get(),&width,&height);
+            glViewport(0,0,width,height); glClearColor(1,1,1,1); glClear(GL_COLOR_BUFFER_BIT);
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+            if(capture_image) screenshot(capture+"-loading.bmp",width,height);
+            glfwSwapBuffers(window.get());
+        };
+        if(!no_splash) loading_frame("Starting Julretsu...");
+        if((!smoke&&!benchmark)||show) glfwShowWindow(window.get());
+        if(!no_splash) loading_frame("Preparing your worksheet...",smoke);
+        julretsu::GridUI app; app.set_scale(scale); app.brand_icon=branding.icon_texture();
+        if(smoke||benchmark) app.set_dark(false,false);
+        bool current_dark=app.dark(); theme(scale,current_dark);
+        if(smoke&&std::getenv("JULRETSU_SETTINGS_PATH")) {
+            app.set_dark(true,true);
+            julretsu::GridUI restored;
+            if(!restored.dark()) throw std::runtime_error("Dark appearance preference did not survive reload");
+            app.set_dark(false,true);
+            julretsu::GridUI restored_light;
+            if(restored_light.dark()) throw std::runtime_error("Light appearance preference did not survive reload");
+            app.set_dark(false,false);
+            std::cout<<"appearance preference round trip=PASS\n";
+        }
+        if(benchmark) app.load_performance_fixture();
+        if(!smoke&&!benchmark&&!no_splash) {
+            // A short minimum makes the supplied splash readable on fast starts.
+            // Ready is shown honestly once setup finishes; no fake percentage.
+            while(Clock::now()-splash_start<std::chrono::milliseconds(650)&&!glfwWindowShouldClose(window.get())) {
+                loading_frame("Ready");
+                glfwWaitEventsTimeout(0.016);
+            }
+        }
+        if(glfwWindowShouldClose(window.get())) return 0;
+        if(smoke) {
+            std::cout<<"branding_assets_loaded="<<branding.loaded()<<"\n";
+            if(!branding.loaded()) return 3;
+        }
+        std::vector<double> frames; frames.reserve(400);
+        std::size_t cpp_allocations=0,imgui_allocations=0,grid_allocations=0;
+        bool close_dialog=false,quit=false;
+        const int frame_limit=smoke?150:(benchmark?400:0);
+        const int warmup=smoke?80:60;
+        int frame=0; bool smoke_ok=true;
+        while(!quit) {
+            auto start=Clock::now();
+            auto cpp_before=julretsu::metrics::cpp_allocations.load();
+            auto imgui_before=julretsu::metrics::imgui_allocations.load();
+            glfwPollEvents();
+            if(glfwWindowShouldClose(window.get())) {
+                if(app.modified()&&!frame_limit) { close_dialog=true; glfwSetWindowShouldClose(window.get(),false); }
+                else break;
+            }
+            glfwGetWindowContentScale(window.get(),&sx,&sy);
+            const float new_scale=std::clamp(std::max(sx,sy),1.0f,2.5f);
+            if(new_scale!=scale) {
+                scale=new_scale; theme(scale,app.dark()); font(scale);
+                ImGui_ImplOpenGL3_DestroyFontsTexture(); ImGui_ImplOpenGL3_CreateFontsTexture();
+                app.set_scale(scale);
+            }
+            if(smoke) {
+                if(frame==10) app.show_scripts(true);
+                if(frame==25) app.jump({julretsu::max_rows-1,julretsu::max_columns-1});
+                if(frame==40) { app.jump({3,2}); app.show_scripts(false); }
+                if(frame==50) app.jump({3,7});
+            }
+            if(current_dark!=app.dark()) { current_dark=app.dark(); theme(scale,current_dark); }
+            app.prepare();
+            ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame();
+            if(smoke) {
+                io.AddFocusEvent(true);
+                if(frame==72) { io.AddMousePosEvent(app.targets[julretsu::GridUI::ThemeButton].x,app.targets[julretsu::GridUI::ThemeButton].y); io.AddMouseButtonEvent(0,true); }
+                if(frame==73) io.AddMouseButtonEvent(0,false);
+                if(frame==77) { app.load_demo(); app.jump({3,2}); } if(frame==76) { std::cout<<"dark mode toggle="<<app.dark()<<"\n"; smoke_ok &= app.dark(); }
+                if(frame==2||frame==42) io.AddKeyEvent(ImGuiKey_F2,true);
+                if(frame==3||frame==43) io.AddKeyEvent(ImGuiKey_F2,false);
+                if(frame==5) io.AddInputCharactersUTF8("12");
+                if(frame==7) io.AddKeyEvent(ImGuiKey_Enter,true);
+                if(frame==8) io.AddKeyEvent(ImGuiKey_Enter,false);
+                if(frame==12||frame==16) io.AddKeyEvent(ImGuiMod_Ctrl,true);
+                if(frame==12) io.AddKeyEvent(ImGuiKey_Z,true);
+                if(frame==13) { io.AddKeyEvent(ImGuiKey_Z,false); io.AddKeyEvent(ImGuiMod_Ctrl,false); }
+                if(frame==16) io.AddKeyEvent(ImGuiKey_Y,true);
+                if(frame==17) { io.AddKeyEvent(ImGuiKey_Y,false); io.AddKeyEvent(ImGuiMod_Ctrl,false); }
+                if(frame==44) io.AddInputCharactersUTF8("99");
+                if(frame==46) io.AddKeyEvent(ImGuiKey_Escape,true);
+                if(frame==47) io.AddKeyEvent(ImGuiKey_Escape,false);
+                if(frame==21) { io.AddMousePosEvent(app.targets[julretsu::GridUI::MacroButton].x,app.targets[julretsu::GridUI::MacroButton].y); io.AddMouseButtonEvent(0,true); }
+                if(frame==22) io.AddMouseButtonEvent(0,false);
+                if(frame==52) { io.AddMousePosEvent(app.targets[julretsu::GridUI::FormulaField].x,app.targets[julretsu::GridUI::FormulaField].y); io.AddMouseButtonEvent(0,true); }
+                if(frame==53) io.AddMouseButtonEvent(0,false);
+                if(frame==54) { io.AddKeyEvent(ImGuiMod_Ctrl,true); io.AddKeyEvent(ImGuiKey_A,true); }
+                if(frame==55) { io.AddKeyEvent(ImGuiKey_A,false); io.AddKeyEvent(ImGuiMod_Ctrl,false); }
+                if(frame==56) io.AddInputCharactersUTF8("=LUA(\"return cell('E11') * 2\")");
+                if(frame==58) io.AddKeyEvent(ImGuiKey_Enter,true);
+                if(frame==59) io.AddKeyEvent(ImGuiKey_Enter,false);
+                if(frame==62) {
+                    const auto actual=app.sheet().read({3,7});
+                    const bool ok=std::holds_alternative<double>(actual)&&std::get<double>(actual)==16124;
+                    std::cout<<"formula bar Lua value="<<julretsu::display(actual)<<" expected=16124\n";
+                    smoke_ok &= ok;
+                }
+                if(frame==66) { io.AddMousePosEvent(app.targets[julretsu::GridUI::BoldButton].x,app.targets[julretsu::GridUI::BoldButton].y); io.AddMouseButtonEvent(0,true); }
+                if(frame==67) io.AddMouseButtonEvent(0,false);
+                if(frame==69) { const bool ok=app.sheet().row_style(3).bold; std::cout<<"row formatting="<<ok<<"\n"; smoke_ok &= ok; }
+                if(frame==36) { io.AddKeyEvent(ImGuiMod_Ctrl,true); io.AddKeyEvent(ImGuiKey_Z,true); }
+                if(frame==37) { io.AddKeyEvent(ImGuiKey_Z,false); io.AddKeyEvent(ImGuiMod_Ctrl,false); }
+                if(frame==24||frame==38) {
+                    const auto actual=app.sheet().read({3,4}); const double expected=frame==24?5850:5400;
+                    const bool ok=std::holds_alternative<double>(actual)&&std::get<double>(actual)==expected;
+                    std::cout<<"macro button frame="<<frame<<" value="<<julretsu::display(actual)<<" expected="<<expected<<"\n";
+                    smoke_ok &= ok;
+                }
+                if(frame==10||frame==15||frame==19||frame==49) {
+                    const double expected=frame==15?1350:5400;
+                    const auto actual=app.sheet().read({3,4});
+                    const bool ok=std::holds_alternative<double>(actual)&&std::get<double>(actual)==expected;
+                    std::cout<<"keyboard frame="<<frame<<" value="<<julretsu::display(actual)<<" expected="<<expected<<"\n";
+                    smoke_ok &= ok;
+                }
+            }
+            ImGui::NewFrame();
+            const auto grid_before=julretsu::metrics::cpp_allocations.load();
+            app.draw();
+            if(frame>=warmup) grid_allocations+=julretsu::metrics::cpp_allocations.load()-grid_before;
+            if(close_dialog) ImGui::OpenPopup("Close workbook?");
+            if(ImGui::BeginPopupModal("Close workbook?",nullptr,ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImGui::TextUnformatted("This workbook has unsaved, in-memory changes.\nFile saving is not available in this milestone.");
+                if(ImGui::Button("Discard and close")) quit=true;
+                ImGui::SameLine(); if(ImGui::Button("Keep editing")) { close_dialog=false; ImGui::CloseCurrentPopup(); }
+                ImGui::EndPopup();
+            }
+            ImGui::Render();
+            int width{},height{}; glfwGetFramebufferSize(window.get(),&width,&height);
+            glViewport(0,0,width,height); glClearColor(0.97f,0.98f,0.985f,1); glClear(GL_COLOR_BUFFER_BIT);
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+            if(smoke&&frame==1) screenshot(capture+"-light.bmp",width,height);
+            if(smoke&&frame==78) screenshot(capture+"-dark.bmp",width,height);
+            if(smoke&&frame==20) screenshot(capture+"-workspace.bmp",width,height);
+            if(smoke&&frame==30) {
+                screenshot(capture+"-last-cell.bmp",width,height);
+                smoke_ok &= app.active()==julretsu::CellCoord{julretsu::max_rows-1,julretsu::max_columns-1};
+                auto hit=app.viewport().hit(app.viewport().row_header+float(int(julretsu::max_columns)-1-app.viewport().first_column)*app.viewport().column_width+2,
+                                          app.viewport().column_header+float(int(julretsu::max_rows)-1-app.viewport().first_row)*app.viewport().row_height+2);
+                smoke_ok &= hit==app.active();
+            }
+            glfwSwapBuffers(window.get());
+            if(frame>=warmup&&frame_limit) {
+                frames.push_back(std::chrono::duration<double,std::milli>(Clock::now()-start).count());
+                cpp_allocations+=julretsu::metrics::cpp_allocations.load()-cpp_before;
+                imgui_allocations+=julretsu::metrics::imgui_allocations.load()-imgui_before;
+            }
+            ++frame; if(frame_limit&&frame>=frame_limit) break;
+            if(!frame_limit&&height==0) glfwWaitEventsTimeout(0.05);
+        }
+        if(frame_limit) {
+            std::sort(frames.begin(),frames.end());
+            auto percentile=[&](double p){return frames[std::min(frames.size()-1,std::size_t(std::ceil(double(frames.size())*p))-1)];};
+            std::cout<<"Julretsu native "<<(smoke?"smoke":"benchmark")<<"\n"
+                     <<"window=1580x960 dpi_scale="<<scale<<" populated_cells="<<app.sheet().populated_cells()
+                     <<" logical_rows="<<julretsu::max_rows<<" samples="<<frames.size()<<" vsync=off\n"
+                     <<"full_frame_ms p50="<<percentile(0.5)<<" p95="<<percentile(0.95)<<" p99="<<percentile(0.99)<<"\n"
+                     <<"warmed_cpp_allocations="<<cpp_allocations<<" warmed_imgui_allocations="<<imgui_allocations
+                     <<" warmed_draw_cpp_allocations="<<grid_allocations<<" process_memory_bytes="<<memory_bytes()<<"\n"
+                     <<"renderer="<<glGetString(GL_RENDERER)<<"\n";
+            if(smoke) { std::cout<<(smoke_ok?"PASS":"FAIL")<<" native smoke checks\n"; if(!smoke_ok) return 2; }
+        }
+        return 0;
+    } catch(const std::exception& error) {
+        std::cerr<<"Julretsu: "<<error.what()<<'\n';
+#ifdef _WIN32
+        if(!smoke&&!benchmark) MessageBoxA(nullptr,error.what(),"Julretsu startup error",MB_OK|MB_ICONERROR);
+#endif
+        return 1;
+    }
+}

@@ -1,0 +1,8 @@
+/build*/
+/.tools/
+/.deps/
+/release/
+/artifacts/
+/tests/
+*.user
+.DS_Store
