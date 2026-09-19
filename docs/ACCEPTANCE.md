@@ -3,7 +3,7 @@
 Date: September 18, 2026.
 
 ## Delivered
-Original MIT-licensed C++20 source, modular CMake, verified future dependency pins,
+Original proprietary C++20 source, modular CMake, verified future dependency pins,
 headless example, sparse row storage and styles, compact selections, staged
 transactions, undo/redo, native tokenizer/parser/AST/evaluator, forward/reverse
 dependencies, iterative SCC diagnosis, Kahn recalculation, and future-only I/O

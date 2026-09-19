@@ -98,5 +98,5 @@ Runtime dependency discovery is deliberately bounded to 64 passes; scripts readi
 many newly discovered cells can reject a batch. Snapshot-based undo/transactions
 still copy populated data and graph metadata. See ARCHITECTURE.md and LUA.md.
 
-All source remains local and MIT licensed. No GitHub publishing or installer
+All source remains local and proprietary (all rights reserved). No GitHub publishing or installer
 registration was performed.

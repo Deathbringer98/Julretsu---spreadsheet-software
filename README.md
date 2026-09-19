@@ -1,8 +1,8 @@
 # Julretsu 0.2.1
-### A native, open-source spreadsheet workbench
+### A native spreadsheet workbench
 
 Julretsu now includes a Windows-tested native ImGui application, a sparse C++20
-spreadsheet engine, and bounded Lua formulas/macros. Project source is MIT licensed.
+spreadsheet engine, and bounded Lua formulas/macros. Project source is proprietary (all rights reserved); see [LICENSE](LICENSE).
 The architecture also targets Linux and macOS; those builds have not been run
 locally in this Windows session.
 

@@ -1,21 +1,103 @@
-MIT License
+Julretsu Proprietary License
+Version 1.0
 
-Copyright (c) 2026 Matthew Menchinton
+Copyright (c) 2026 Matthew Menchinton. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. OWNERSHIP
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Julretsu, including its source code, object code, binaries, documentation,
+build scripts, designs, user interface, name, logos, icons, artwork, and all
+other materials in this repository (together, the "Software"), is the sole and
+exclusive property of Matthew Menchinton (the "Owner"). All right, title, and
+interest in and to the Software, including all copyrights, trademarks, trade
+secrets, and other intellectual property rights, are and remain with the Owner.
+
+The Software is NOT open source. It is not licensed under any open-source
+license, and no open-source license applies to it.
+
+2. NO LICENSE GRANTED
+
+Except for the limited viewing permission in Section 3, no license or right of
+any kind is granted to you, whether expressly, by implication, by estoppel, or
+otherwise. The fact that the Software is publicly visible does not grant you
+any right to use it.
+
+3. LIMITED PERMISSION TO VIEW
+
+If this repository is publicly accessible, you may view the Software on the
+hosting platform, and the platform may display it and let you fork it, solely
+as required by that platform's terms of service. That permission does not
+extend to any other use.
+
+4. RESTRICTIONS
+
+Without the Owner's prior written permission, you may not, in whole or in part:
+
+  (a) copy, reproduce, or download the Software for any purpose other than
+      viewing it as allowed in Section 3;
+  (b) use, install, build, compile, or run the Software;
+  (c) modify, adapt, translate, or create derivative works of the Software;
+  (d) distribute, publish, sublicense, sell, rent, lease, lend, or otherwise
+      make the Software available to anyone;
+  (e) use the Software, or any part of it, in any other product or service,
+      commercial or non-commercial;
+  (f) use the Software, or any part of it, to train, fine-tune, or evaluate
+      any machine-learning or artificial-intelligence model;
+  (g) remove, alter, or obscure any copyright, ownership, or license notice;
+  (h) use the name "Julretsu" or any of the Owner's logos, icons, or artwork.
+
+5. CONTRIBUTIONS
+
+The Owner does not currently accept outside contributions. If you nevertheless
+submit any code, content, idea, or feedback relating to the Software, you
+assign to the Owner all right, title, and interest in it, and you agree the
+Owner may use it for any purpose without restriction, attribution, or
+compensation. Where assignment is not legally possible, you grant the Owner an
+exclusive, perpetual, irrevocable, worldwide, royalty-free, transferable, and
+sublicensable license to it.
+
+6. THIRD-PARTY COMPONENTS
+
+The Software uses third-party components that are licensed by their own
+authors under their own licenses, as listed in THIRD_PARTY_NOTICES.md. This
+license does not apply to those components and does not restrict any rights
+you have under their licenses. Those rights cover only the third-party
+components themselves and give you no rights in the Owner's Software.
+
+7. PERMISSIONS AND FUTURE LICENSING
+
+Any permission beyond this license must be given by the Owner in writing. The
+Owner may license, relicense, sell, or release the Software, including under an
+open-source license, at any time and on any terms. Any such future release
+applies only to the versions and terms the Owner specifies.
+
+8. TERMINATION
+
+Any use of the Software that violates this license is unauthorized and may
+infringe the Owner's copyright and other rights. The Owner may enforce these
+rights by any lawful means. If you have obtained a copy of the Software in
+violation of this license, you must delete all copies in your possession or
+control.
+
+9. NO WARRANTY
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+
+10. LIMITATION OF LIABILITY
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL THE OWNER BE LIABLE
+FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR
+THE USE OF OR OTHER DEALINGS IN THE SOFTWARE.
+
+11. GENERAL
+
+If any provision of this license is held unenforceable, the remaining
+provisions remain in full effect. The Owner's failure to enforce any provision
+is not a waiver of it. This license is the entire agreement concerning the
+Software unless the Owner has signed a separate written agreement with you.
+
+For permission requests, contact the Owner through
+https://github.com/Deathbringer98.
