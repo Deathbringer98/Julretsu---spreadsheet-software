@@ -41,9 +41,6 @@ This is an editable native MVP, not a complete Excel replacement.
   Credential Manager, validated edit proposals reviewed before one-step, undoable apply.
 - A portable Windows package with runtime DLLs and dependency license notices.
 
-[GenOffice](https://github.com/genspark-ai/genoffice) inspired the local-first
-product direction. No GenOffice code or assets were copied.
-
 ## Build and test on this Windows machine
 ```powershell
 .\build.ps1 -Gui -Run
