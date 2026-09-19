@@ -71,3 +71,16 @@ function(julretsu_prepare_lua_dependencies)
     target_link_libraries(julretsu_lua_runtime PUBLIC m ${CMAKE_DL_LIBS})
   endif()
 endfunction()
+
+FetchContent_Declare(miniz GIT_REPOSITORY https://github.com/richgel999/miniz.git GIT_TAG 77d0dce8627735138c51770d1799a1ef48f2117d SOURCE_SUBDIR julretsu-source-only)
+FetchContent_Declare(pugixml GIT_REPOSITORY https://github.com/zeux/pugixml.git GIT_TAG ee86beb30e4973f5feffe3ce63bfa4fbadf72f38 SOURCE_SUBDIR julretsu-source-only)
+function(julretsu_prepare_xlsx)
+  FetchContent_MakeAvailable(miniz pugixml)
+  file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/miniz_export.h "#pragma once
+#define MINIZ_EXPORT
+")
+  add_library(julretsu_zip STATIC ${miniz_SOURCE_DIR}/miniz.c ${miniz_SOURCE_DIR}/miniz_zip.c ${miniz_SOURCE_DIR}/miniz_tdef.c ${miniz_SOURCE_DIR}/miniz_tinfl.c)
+  target_include_directories(julretsu_zip SYSTEM PUBLIC ${miniz_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+  add_library(julretsu_xml STATIC ${pugixml_SOURCE_DIR}/src/pugixml.cpp)
+  target_include_directories(julretsu_xml SYSTEM PUBLIC ${pugixml_SOURCE_DIR}/src)
+endfunction()

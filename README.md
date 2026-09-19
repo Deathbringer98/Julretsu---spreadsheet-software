@@ -1,4 +1,4 @@
-# Julretsu 0.2.1
+# Julretsu 0.4.0
 ### A native spreadsheet workbench
 
 Julretsu now includes a Windows-tested native ImGui application, a sparse C++20
@@ -10,14 +10,16 @@ The app now uses your supplied icon and startup banner. See [branding notes](doc
 
 ## Start the app
 Double-click **Start Julretsu.cmd** in this folder, or open
-**release/Julretsu-0.2.1/Julretsu.exe**. Keep the supplied DLLs beside the executable.
+**release/Julretsu-0.4.0/Julretsu.exe**. Keep the supplied DLLs beside the executable.
 
 [Quick start and controls](docs/QUICKSTART.md) ·
 [Steps 3–4 acceptance report](docs/ACCEPTANCE-0.2.md) ·
 [Lua contracts](docs/LUA.md)
 
-**Workbooks are currently in memory only. Saving, CSV/XLSX, and Connect Your AI
-are not implemented.** The window asks before discarding modified data.
+**Local saving is available through File > Save, Save As, and Open.** Native .julretsu files preserve inputs, formulas, row formatting, and Lua scripts. Unsaved changes can be saved before closing or replacing a workbook.
+CSV and Excel (.xlsx) import/export exchange data with other spreadsheet apps; see
+[what carries over](docs/DATA-EXCHANGE.md). The optional [AI assistant](docs/AI.md) uses
+your own Claude or OpenAI-compatible provider and previews every edit before applying it.
 This is an editable native MVP, not a complete Excel replacement.
 
 ## Implemented
@@ -32,6 +34,11 @@ This is an editable native MVP, not a complete Excel replacement.
   selection, row formatting, script editor, and status bar.
 - Both-axis virtualized custom grid, DPI-aware font/style rebuilding, measured
   allocation counts and whole-frame timings.
+- CSV import/export (quoted commas, quotes, multi-line cells, formula-injection-safe export).
+- Excel .xlsx import/export: first worksheet, SUM/AVERAGE/IF and arithmetic formulas,
+  bold, colours and decimal row formats, with an import preview of what carries over.
+- Optional AI assistant: Anthropic or OpenAI-compatible providers, keys in Windows
+  Credential Manager, validated edit proposals reviewed before one-step, undoable apply.
 - A portable Windows package with runtime DLLs and dependency license notices.
 
 [GenOffice](https://github.com/genspark-ai/genoffice) inspired the local-first
@@ -79,9 +86,9 @@ graphics driver; this build was tested on an NVIDIA RTX 5060.
 | JULRETSU_BUILD_BENCHMARKS | OFF | Build engine benchmarks |
 | JULRETSU_ENABLE_SANITIZERS | OFF | ASan/UBSan on non-Windows GCC/Clang |
 
-Current targets: julretsu_core, julretsu_headless, julretsu_tests,
-julretsu_viewport_tests, optional julretsu_benchmarks, julretsu_lua,
-julretsu_lua_tests, julretsu_ui, and julretsu.
+Current targets: julretsu_core, julretsu_ai, julretsu_headless, optional
+julretsu_benchmarks, julretsu_lua, julretsu_xlsx, julretsu_ui, and julretsu
+(plus test executables when a local tests/ folder is present).
 
 ## Performance checks
 The app supports --smoke (keyboard/mouse checks and screenshots) and --benchmark
@@ -96,11 +103,10 @@ and measurement boundaries; there is no universal frame-rate guarantee.
 - tests: core contracts, Lua sandbox/dependency/macro tests, viewport bounds.
 - examples, benchmarks: headless example and engine benchmarks.
 - cmake/Dependencies.cmake: verified pinned upstream dependencies.
-- docs: architecture, formulas, Lua, controls, acceptance reports, future I/O/AI.
+- docs: architecture, formulas, Lua, controls, file exchange, AI assistant, acceptance reports.
 - .github/workflows/ci.yml: cross-platform headless/Lua builds and sanitizer job.
 
 Read [architecture](docs/ARCHITECTURE.md), [formula semantics](docs/FORMULAS.md),
 [dependencies](docs/DEPENDENCIES.md), and [remaining work](docs/ROADMAP.md).
 The earlier docs/ACCEPTANCE.md is the historical Steps 1–2 report.
 
-No source or binary has been published remotely.

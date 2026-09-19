@@ -1,8 +1,8 @@
 #include <windows.h>
 1 ICON "@CMAKE_CURRENT_SOURCE_DIR@/assets/app-icon.ico"
 1 VERSIONINFO
- FILEVERSION 0,3,0,0
- PRODUCTVERSION 0,3,0,0
+ FILEVERSION 0,4,2,0
+ PRODUCTVERSION 0,4,2,0
  FILEOS VOS_NT_WINDOWS32
  FILETYPE VFT_APP
 BEGIN
@@ -12,8 +12,8 @@ BEGIN
   BEGIN
    VALUE "FileDescription", "Julretsu Spreadsheet"
    VALUE "ProductName", "Julretsu"
-   VALUE "FileVersion", "0.3.0"
-   VALUE "ProductVersion", "0.3.0"
+   VALUE "FileVersion", "0.4.2"
+   VALUE "ProductVersion", "0.4.2"
   END
  END
  BLOCK "VarFileInfo"

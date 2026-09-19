@@ -66,6 +66,7 @@ public:
     [[nodiscard]] const Cell* cell(CellCoord coord) const;
     [[nodiscard]] const Row& row_view(std::uint32_t row) const;
     [[nodiscard]] const std::map<std::uint32_t,Row>& populated_rows() const noexcept { return state_.rows; }
+    [[nodiscard]] const std::map<std::uint32_t,Style>& row_styles() const noexcept { return state_.styles; }
     [[nodiscard]] Style row_style(std::uint32_t row) const;
     [[nodiscard]] std::size_t populated_cells() const noexcept;
     [[nodiscard]] std::size_t edge_count() const noexcept;
@@ -76,5 +77,6 @@ public:
     [[nodiscard]] CommitResult clear_rows(const RowSelection& selection);
     [[nodiscard]] bool undo();
     [[nodiscard]] bool redo();
+    void clear_history() noexcept { undo_.clear(); redo_.clear(); }
 };
 }

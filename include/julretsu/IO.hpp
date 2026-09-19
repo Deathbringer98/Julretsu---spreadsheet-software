@@ -4,9 +4,10 @@
 #include <ostream>
 #include <stop_token>
 namespace julretsu {
-// Future-only adapter interfaces; no CSV/XLSX implementation in this milestone.
-enum class ImportInterpretation { TextOnly, NativeFormulas };
+// Bounded stream adapters; implementations report errors without throwing across the UI.
+enum class ImportInterpretation { TextOnly, Values, NativeFormulas };
 struct StreamOptions {
+    bool safe_text_export = true;
     std::size_t buffer_bytes = 64 * 1024;
     std::size_t batch_cells = 4096;
     ImportInterpretation interpretation = ImportInterpretation::TextOnly;

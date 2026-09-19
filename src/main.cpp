@@ -19,6 +19,9 @@
 #define NOMINMAX
 #include <windows.h>
 #include <psapi.h>
+#include <shellapi.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
 #else
 #include <sys/resource.h>
 #endif
@@ -126,15 +129,36 @@ std::size_t memory_bytes() {
 int main(int argc,char** argv) {
     bool smoke=false, benchmark=false, show=false, no_splash=false;
     std::string capture="julretsu";
+    std::filesystem::path open_path;
+    bool check_open=false;
     for(int i=1;i<argc;++i) {
         std::string arg=argv[i];
-        if(arg=="--smoke") smoke=true;
+        if(arg=="--check-open") check_open=true;
+        else if(arg=="--open"&&i+1<argc) {
+#ifndef _WIN32
+            open_path=argv[i+1];
+#endif
+            ++i;
+        }
+        else if(arg=="--smoke") smoke=true;
         else if(arg=="--benchmark") benchmark=true;
         else if(arg=="--visible") show=true;
         else if(arg=="--no-splash") no_splash=true;
         else if(arg=="--capture-prefix"&&i+1<argc) capture=argv[++i];
     }
     try {
+#ifdef _WIN32
+        int argument_count=0;
+        wchar_t** arguments=CommandLineToArgvW(GetCommandLineW(),&argument_count);
+        if(!arguments) throw std::runtime_error("Cannot read the workbook filename.");
+        for(int i=1;i<argument_count;++i) {
+            const std::wstring_view argument=arguments[i];
+            if(argument==L"--open"&&i+1<argument_count) open_path=arguments[++i];
+            else if(argument==L"--capture-prefix"&&i+1<argument_count) ++i;
+            else if(!argument.empty()&&argument.front()!=L'-') open_path=arguments[i];
+        }
+        LocalFree(arguments);
+#endif
         GLFWLifetime glfw;
 #ifdef __APPLE__
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,3); glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,2);
@@ -178,9 +202,12 @@ int main(int argc,char** argv) {
             glfwSwapBuffers(window.get());
         };
         if(!no_splash) loading_frame("Starting Julretsu...");
-        if((!smoke&&!benchmark)||show) glfwShowWindow(window.get());
+        if((!smoke&&!benchmark&&!check_open)||show) glfwShowWindow(window.get());
         if(!no_splash) loading_frame("Preparing your worksheet...",smoke);
         julretsu::GridUI app; app.set_scale(scale); app.brand_icon=branding.icon_texture();
+#ifdef _WIN32
+        app.native_window=glfwGetWin32Window(window.get());
+#endif
         if(smoke||benchmark) app.set_dark(false,false);
         bool current_dark=app.dark(); theme(scale,current_dark);
         if(smoke&&std::getenv("JULRETSU_SETTINGS_PATH")) {
@@ -193,6 +220,10 @@ int main(int argc,char** argv) {
             app.set_dark(false,false);
             std::cout<<"appearance preference round trip=PASS\n";
         }
+        if(!open_path.empty()) {
+            const bool opened=app.open_from(open_path);
+            if(check_open) {std::cout<<"startup_workbook_open="<<opened<<" cells="<<app.sheet().populated_cells()<<"\n";return opened?0:4;}
+        } else if(check_open) return 4;
         if(benchmark) app.load_performance_fixture();
         if(!smoke&&!benchmark&&!no_splash) {
             // A short minimum makes the supplied splash readable on fast starts.
@@ -209,9 +240,9 @@ int main(int argc,char** argv) {
         }
         std::vector<double> frames; frames.reserve(400);
         std::size_t cpp_allocations=0,imgui_allocations=0,grid_allocations=0;
-        bool close_dialog=false,quit=false;
+        bool quit=false;
         const int frame_limit=smoke?150:(benchmark?400:0);
-        const int warmup=smoke?80:60;
+        const int warmup=smoke?110:60;
         int frame=0; bool smoke_ok=true;
         while(!quit) {
             auto start=Clock::now();
@@ -219,7 +250,7 @@ int main(int argc,char** argv) {
             auto imgui_before=julretsu::metrics::imgui_allocations.load();
             glfwPollEvents();
             if(glfwWindowShouldClose(window.get())) {
-                if(app.modified()&&!frame_limit) { close_dialog=true; glfwSetWindowShouldClose(window.get(),false); }
+                if(app.modified()&&!frame_limit) { if(app.confirm_close()) break; glfwSetWindowShouldClose(window.get(),false); }
                 else break;
             }
             glfwGetWindowContentScale(window.get(),&sx,&sy);
@@ -240,6 +271,44 @@ int main(int argc,char** argv) {
             ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame();
             if(smoke) {
                 io.AddFocusEvent(true);
+                if(frame==70) {
+                    const bool saved=app.save_to(capture+"-roundtrip.julretsu");
+                    smoke_ok &= saved&&!app.modified();
+                    julretsu::GridUI reopened;
+                    const bool loaded=reopened.open_from(capture+"-roundtrip.julretsu");
+                    smoke_ok &= loaded&&reopened.sheet().read({3,7})==app.sheet().read({3,7})&&reopened.sheet().row_style(3)==app.sheet().row_style(3);
+                    std::cout<<"workbook save/open with Lua and formatting="<<(saved&&loaded)<<"\n";
+                }
+                if(frame==79) {smoke_ok &= app.save_to(capture+"-draft.julretsu");app.jump({19,0});}
+                if(frame==81) io.AddKeyEvent(ImGuiKey_F2,true);
+                if(frame==82) io.AddKeyEvent(ImGuiKey_F2,false);
+                if(frame==83) io.AddInputCharactersUTF8("123");
+                if(frame==85) {io.AddKeyEvent(ImGuiMod_Ctrl,true);io.AddKeyEvent(ImGuiKey_S,true);}
+                if(frame==86) {io.AddKeyEvent(ImGuiMod_Ctrl,false);io.AddKeyEvent(ImGuiKey_S,false);}
+                if(frame==89) {
+                    julretsu::GridUI reopened;
+                    const bool loaded=reopened.open_from(capture+"-draft.julretsu");
+                    const bool saved=loaded&&reopened.sheet().read({19,0})==julretsu::Value{123.0}&&!app.modified();
+                    smoke_ok &= saved;std::cout<<"Ctrl+S saves unfinished cell edit="<<saved<<"\n";
+                    app.jump({3,2});
+                }
+                if(frame==91) {io.AddMousePosEvent(app.targets[julretsu::GridUI::FileButton].x,app.targets[julretsu::GridUI::FileButton].y);io.AddMouseButtonEvent(0,true);}
+                if(frame==92) io.AddMouseButtonEvent(0,false);
+                if(frame==98) {
+                    app.show_ai(true);
+                    app.smoke_ai_proposal(R"J({"summary":"Label and total","edits":[{"cell":"H1","kind":"text","value":"AI smoke"},{"cell":"B20","kind":"number","value":"7"},{"cell":"C20","kind":"formula","value":"=LUA(\"return 1\")"}]})J");
+                    const auto& p=app.ai_proposal();
+                    const bool ok=p&&p->edits.size()==3&&!p->edits[2].selected&&!app.sheet().cell({0,7});
+                    std::cout<<"AI proposal preview (no sheet change)="<<ok<<"\n"; smoke_ok &= ok;
+                }
+                if(frame==103) app.smoke_ai_apply();
+                if(frame==105) {
+                    const bool ok=!app.ai_proposal()&&app.sheet().read({0,7})==julretsu::Value{std::string("AI smoke")}&&app.sheet().read({19,1})==julretsu::Value{7.0}&&!app.sheet().cell({19,2});
+                    std::cout<<"AI proposal applied (Lua edit left unticked)="<<ok<<"\n"; smoke_ok &= ok; app.show_ai(false);
+                }
+                if(frame==96) io.AddKeyEvent(ImGuiKey_Escape,true);
+                if(frame==97) io.AddKeyEvent(ImGuiKey_Escape,false);
+
                 if(frame==72) { io.AddMousePosEvent(app.targets[julretsu::GridUI::ThemeButton].x,app.targets[julretsu::GridUI::ThemeButton].y); io.AddMouseButtonEvent(0,true); }
                 if(frame==73) io.AddMouseButtonEvent(0,false);
                 if(frame==77) { app.load_demo(); app.jump({3,2}); } if(frame==76) { std::cout<<"dark mode toggle="<<app.dark()<<"\n"; smoke_ok &= app.dark(); }
@@ -294,17 +363,12 @@ int main(int argc,char** argv) {
             const auto grid_before=julretsu::metrics::cpp_allocations.load();
             app.draw();
             if(frame>=warmup) grid_allocations+=julretsu::metrics::cpp_allocations.load()-grid_before;
-            if(close_dialog) ImGui::OpenPopup("Close workbook?");
-            if(ImGui::BeginPopupModal("Close workbook?",nullptr,ImGuiWindowFlags_AlwaysAutoResize)) {
-                ImGui::TextUnformatted("This workbook has unsaved, in-memory changes.\nFile saving is not available in this milestone.");
-                if(ImGui::Button("Discard and close")) quit=true;
-                ImGui::SameLine(); if(ImGui::Button("Keep editing")) { close_dialog=false; ImGui::CloseCurrentPopup(); }
-                ImGui::EndPopup();
-            }
             ImGui::Render();
             int width{},height{}; glfwGetFramebufferSize(window.get(),&width,&height);
             glViewport(0,0,width,height); glClearColor(0.97f,0.98f,0.985f,1); glClear(GL_COLOR_BUFFER_BIT);
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+            if(smoke&&frame==94) screenshot(capture+"-file-menu.bmp",width,height);
+            if(smoke&&frame==101) screenshot(capture+"-ai-preview.bmp",width,height);
             if(smoke&&frame==1) screenshot(capture+"-light.bmp",width,height);
             if(smoke&&frame==78) screenshot(capture+"-dark.bmp",width,height);
             if(smoke&&frame==20) screenshot(capture+"-workspace.bmp",width,height);

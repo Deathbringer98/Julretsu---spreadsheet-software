@@ -10,6 +10,8 @@ JULRETSU_BUILD_GUI to compile the integrations; GUI also enables Lua.
 | Dear ImGui | v1.91.9b | f5befd2d29e66809cd1110a152e375a7f1981f06 |
 | GLFW | 3.4 | 7b6aead9fb88b3623e3b3725ebb42670cbe4c579 |
 | sol2 | v3.5.0 | 9190880c593dfb018ccf5cc9729ab87739709862 |
+| miniz | 3.1.2 | 77d0dce8627735138c51770d1799a1ef48f2117d |
+| pugixml | 1.15 | ee86beb30e4973f5feffe3ce63bfa4fbadf72f38 |
 | Lua | 5.4.9 | 2335b6c582a52654f94612bf10d2f4672805d05329aa6568b1d8cd9e5c6fb8e6 |
 
 GLFW and sol2 annotated tags were peeled to commits using upstream release refs.

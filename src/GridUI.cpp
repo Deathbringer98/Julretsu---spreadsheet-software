@@ -1,4 +1,13 @@
 #include "julretsu/GridUI.hpp"
+#include "julretsu/WorkbookFile.hpp"
+#include "julretsu/Csv.hpp"
+#include "julretsu/Xlsx.hpp"
+#include <sstream>
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#include <commdlg.h>
+#endif
 #include <imgui.h>
 #include <algorithm>
 #include <charconv>
@@ -22,7 +31,7 @@ std::filesystem::path appearance_path() {
 #endif
     return {};
 }
-enum class Glyph { Sheet, Undo, Redo, Bold, Fill, Reset, Clear, Function, Code, Settings, Book, Sun, Moon, Plus };
+enum class Glyph { Sheet, Undo, Redo, Bold, Fill, Reset, Clear, Function, Code, Settings, Book, Sun, Moon, Plus, Ai };
 void glyph(ImDrawList* d,ImVec2 p,float size,ImU32 color,Glyph kind) {
     auto point=[&](float x,float y){return ImVec2{p.x+x*size,p.y+y*size};};
     auto line=[&](float x,float y,float xx,float yy){ d->AddLine(point(x,y),point(xx,yy),color,1.6f); };
@@ -47,7 +56,7 @@ void glyph(ImDrawList* d,ImVec2 p,float size,ImU32 color,Glyph kind) {
         for(int i=0;i<8;++i) { const float a=float(i)*.785398f;line(.5f+.34f*std::cos(a),.5f+.34f*std::sin(a),.5f+.47f*std::cos(a),.5f+.47f*std::sin(a)); }
     } else if(kind==Glyph::Plus) {line(.5f,.15f,.5f,.85f);line(.15f,.5f,.85f,.5f);}
     else {
-        const char* text=kind==Glyph::Bold?"B":kind==Glyph::Function?"fx":"J";
+        const char* text=kind==Glyph::Bold?"B":kind==Glyph::Function?"fx":kind==Glyph::Ai?"AI":"J";
         d->AddText(ImGui::GetFont(),size,point(.08f,-.07f),color,text);
     }
 }
@@ -103,8 +112,10 @@ GridUI::GridUI():sheet_({},&lua_) {
     std::ifstream preference(appearance_path()); std::string saved; preference >> saved; dark_=saved=="dark";
     std::snprintf(script_.data(),script_.size(),"-- Macros commit once. Undo restores every edit.\n-- cell() reads the sheet before the macro.\nfor row = 4, 9 do\n  local quantity = cell('C' .. row)\n  set('C' .. row, quantity + 1)\nend");
     load_demo();
+    ai_use_settings(load_ai_settings());
 }
 void GridUI::load_demo() {
+    file_path_.clear(); workbook_name_="Untitled workbook"; file_label_.clear(); editor_dirty_=false;
     sheet_=Sheet({},&lua_); Batch b;
     auto put=[&](unsigned row,unsigned col,Input value){b.cells.push_back({{row,col},std::move(value)});};
     Style title_style; title_style.bold=true; b.rows.push_back({0,title_style});
@@ -171,12 +182,12 @@ void GridUI::refresh_editor() {
         if(oversized_) { editor_[0]=0; message_="Cell exceeds the editor limit; value preserved. Clear it explicitly to replace."; }
         else std::snprintf(editor_.data(),editor_.size(),"%s",value.c_str());
     }
-    selection_changed_=false;
+    selection_changed_=false; editor_dirty_=false;
 }
 void GridUI::queue_edit() {
     if(oversized_) return;
     queued_.cells.push_back({active_,interpret(editor_.data())});
-    editing_=false; grid_focused_=true;
+    editing_=false; editor_dirty_=false; grid_focused_=true;
 }
 void GridUI::smoke_queue_edit(CellCoord c,const char* text) {
     select(c); std::snprintf(editor_.data(),editor_.size(),"%s",text); queue_edit();
@@ -213,8 +224,169 @@ void GridUI::style_selection(Action action) {
     auto result=sheet_.apply(b); modified_|=result.accepted;
     message_=result.accepted?"Row formatting applied.":result.error->context;
 }
+namespace {
+std::optional<std::filesystem::path> workbook_dialog(bool save,const std::filesystem::path& current,void* owner,const wchar_t* extension=L"julretsu") {
+#ifdef _WIN32
+    std::array<wchar_t,32768> name{};
+    const auto initial=current.empty()?(std::wstring(L"Untitled workbook.")+extension):current.wstring();
+    std::copy_n(initial.c_str(),std::min(initial.size(),name.size()-1),name.data());
+    OPENFILENAMEW dialog{}; dialog.lStructSize=sizeof(dialog); dialog.hwndOwner=static_cast<HWND>(owner);
+    dialog.lpstrFilter=std::wstring_view(extension)==L"xlsx"?L"Excel Workbook (*.xlsx)\0*.xlsx\0\0":std::wstring_view(extension)==L"csv"?L"CSV (UTF-8) (*.csv)\0*.csv\0\0":L"Julretsu Workbook (*.julretsu)\0*.julretsu\0\0";
+    dialog.lpstrFile=name.data(); dialog.nMaxFile=DWORD(name.size()); dialog.lpstrDefExt=extension;
+    dialog.lpstrTitle=save?L"Save workbook locally":L"Open a Julretsu workbook";
+    dialog.Flags=OFN_EXPLORER|OFN_NOCHANGEDIR|OFN_PATHMUSTEXIST|(save?OFN_OVERWRITEPROMPT:OFN_FILEMUSTEXIST);
+    if(save?GetSaveFileNameW(&dialog):GetOpenFileNameW(&dialog)) return std::filesystem::path(name.data());
+    if(CommDlgExtendedError()) throw std::runtime_error("Windows could not open the file dialog. Please try again.");
+    return std::nullopt;
+#else
+    (void)save;(void)current;(void)owner;(void)extension;
+    throw std::runtime_error("Native file dialogs are currently supported on Windows.");
+#endif
+}
+std::string path_label(const std::filesystem::path& path) {
+    const auto utf8=path.u8string(); return std::string(reinterpret_cast<const char*>(utf8.data()),utf8.size());
+}
+}
+bool GridUI::save_to(const std::filesystem::path& path) {
+    try {
+        if(editor_dirty_) queue_edit();
+        if(!queued_.cells.empty()) {
+            auto result=sheet_.apply(queued_); queued_={};
+            if(!result.accepted) {editor_dirty_=true;throw std::runtime_error(result.error->context);}
+            modified_=true; selection_changed_=true;
+        }
+        write_workbook(path,sheet_,script_.data());
+        file_path_=path; workbook_name_=path_label(path.filename()); file_label_=path_label(path);
+        modified_=false; editor_dirty_=false; message_="Saved to this device."; return true;
+    } catch(const std::exception& error) { message_=error.what(); file_error_=message_; return false; }
+}
+bool GridUI::save(bool save_as) {
+    try {
+        auto path=file_path_;
+        if(save_as||path.empty()) { auto chosen=workbook_dialog(true,path,native_window); if(!chosen) {message_="Save cancelled.";return false;} path=*chosen; }
+        if(path.extension()!=L".julretsu") { message_="Save uses the .julretsu format. Use File > Export for CSV or Excel."; file_error_=message_; return false; }
+        return save_to(path);
+    } catch(const std::exception& error) {message_=error.what(); file_error_=message_;return false;}
+}
+bool GridUI::open_from(const std::filesystem::path& path) {
+    try {
+        auto workbook=read_workbook(path);
+        Limits limits; limits.batch_edits=max_rows;
+        Sheet replacement(limits,&lua_); auto result=replacement.apply(workbook.data);
+        if(!result.accepted) throw std::runtime_error(result.error->context);
+        // Install only after complete parsing and validation; an invalid file cannot erase work.
+        replacement.clear_history(); sheet_=std::move(replacement); queued_={}; row_selection_.clear();
+        std::snprintf(script_.data(),script_.size(),"%s",workbook.script.c_str());
+        file_path_=path; workbook_name_=path_label(path.filename()); file_label_=path_label(path);
+        modified_=false; editor_dirty_=false; counted_revision_=~std::uint64_t{};
+        select({0,0}); viewport_.first_row=0;viewport_.first_column=0;message_="Workbook opened.";return true;
+    } catch(const std::exception& error) {message_=error.what();file_error_=message_;return false;}
+}
+bool GridUI::confirm_close() {
+    if(!modified()) return true;
+#ifdef _WIN32
+    const int answer=MessageBoxW(static_cast<HWND>(native_window),L"Do you want to save your changes?\n\nSave keeps your workbook on this device. Choose No to discard your changes, or Cancel to keep editing.",L"Julretsu - Save changes?",MB_YESNOCANCEL|MB_ICONQUESTION);
+    if(answer==IDYES) return save(false);
+    return answer==IDNO;
+#else
+    message_="Save the workbook before replacing or closing it.";return false;
+#endif
+}
+void GridUI::open() {
+    try {
+        auto path=workbook_dialog(false,file_path_,native_window);
+        if(path&&confirm_close()) open_from(*path);
+    } catch(const std::exception& error) {message_=error.what();file_error_=message_;}
+}
+
+void GridUI::csv_file(bool exporting) {
+    try {
+        auto chosen=workbook_dialog(exporting,{},native_window,L"csv");if(!chosen)return;
+        if(exporting) {
+            if(editor_dirty_) {queue_edit();auto result=sheet_.apply(queued_);queued_={};if(!result.accepted)throw std::runtime_error(result.error->context);modified_=true;selection_changed_=true;}
+            std::ostringstream out;CsvAdapter adapter;StreamOptions options;
+            auto result=adapter.export_sheet(out,sheet_,options);if(result.error)throw std::runtime_error(result.error->context);
+            write_file_atomic(*chosen,out.str());message_="CSV exported: values only; formula-like text has a protective apostrophe. Save .julretsu to keep formulas and formatting.";
+        } else {
+            if(!confirm_close())return;
+            std::ifstream in(*chosen,std::ios::binary);if(!in)throw std::runtime_error("Cannot open CSV file.");
+            Sheet replacement({},&lua_);CsvAdapter adapter;StreamOptions options;options.interpretation=ImportInterpretation::Values;
+            auto result=adapter.import_sheet(in,replacement,options);if(result.error)throw std::runtime_error(result.error->context);
+            replacement.clear_history();sheet_=std::move(replacement);file_path_.clear();workbook_name_="Imported CSV";file_label_.clear();script_[0]=0;
+            modified_=true;editor_dirty_=false;counted_revision_=~std::uint64_t{};row_selection_.clear();select({0,0});viewport_.first_row=viewport_.first_column=0;
+            message_="CSV imported. Numbers and Booleans detected; formulas remain text. Save as .julretsu to keep your work.";
+        }
+    }catch(const std::exception& e){message_=e.what();file_error_=message_;}
+}
+
+void GridUI::xlsx_file(bool exporting) {
+    try {
+        auto chosen=workbook_dialog(exporting,{},native_window,L"xlsx");if(!chosen)return;
+        if(exporting) {
+#ifdef _WIN32
+            if(MessageBoxW(static_cast<HWND>(native_window),L"Export one worksheet with supported arithmetic, SUM, AVERAGE and IF formulas and basic row formatting. Lua and unsupported formulas become values. Decimal styles use 0 or 2 places. Lua scripts are omitted. Keep a .julretsu copy for full fidelity. Continue?",L"Export Excel workbook",MB_OKCANCEL|MB_ICONINFORMATION)!=IDOK)return;
+#endif
+            if(editor_dirty_){queue_edit();auto r=sheet_.apply(queued_);queued_={};if(!r.accepted)throw std::runtime_error(r.error->context);modified_=true;selection_changed_=true;}
+            message_=write_xlsx(*chosen,sheet_);
+        } else {
+            auto imported=read_xlsx(*chosen,xlsx_formulas_);
+#ifdef _WIN32
+            const int length=MultiByteToWideChar(CP_UTF8,0,imported.summary.c_str(),-1,nullptr,0);std::wstring summary(std::size_t(length),L'\0');MultiByteToWideChar(CP_UTF8,0,imported.summary.c_str(),-1,summary.data(),length);
+            if(MessageBoxW(static_cast<HWND>(native_window),summary.c_str(),L"Excel import preview",MB_OKCANCEL|MB_ICONINFORMATION)!=IDOK)return;
+#endif
+            if(!confirm_close())return;Sheet replacement({},&lua_);auto result=replacement.apply(imported.data);if(!result.accepted)throw std::runtime_error(result.error->context);
+            replacement.clear_history();sheet_=std::move(replacement);file_path_.clear();workbook_name_="Imported Excel workbook";file_label_.clear();script_[0]=0;
+            modified_=true;editor_dirty_=false;counted_revision_=~std::uint64_t{};row_selection_.clear();select({0,0});viewport_.first_row=viewport_.first_column=0;
+            message_="Excel worksheet imported. Save .julretsu to keep changes. Import compatibility details were shown before loading.";
+        }
+    }catch(const std::exception& e){message_=e.what();file_error_=message_;}
+}
+
+void GridUI::ai_use_settings(const AiSettings& settings) {
+    ai_settings_=settings;
+    std::snprintf(ai_model_.data(),ai_model_.size(),"%s",settings.model.c_str());
+    std::snprintf(ai_endpoint_.data(),ai_endpoint_.size(),"%s",settings.endpoint.c_str());
+    ai_key_saved_=load_ai_key(settings.provider).has_value();
+}
+void GridUI::ai_send() {
+    try {
+        AiSettings settings=ai_settings_; settings.model=ai_model_.data(); settings.endpoint=ai_endpoint_.data();
+        std::string key=load_ai_key(settings.provider).value_or(std::string());
+        if(settings.provider==AiProvider::Anthropic&&key.empty()) { ai_connection_open_=true; throw std::runtime_error("Add your Anthropic API key under Connection first."); }
+        if(editor_dirty_) queue_edit();
+        if(!queued_.cells.empty()) { auto r=sheet_.apply(queued_); queued_={}; modified_|=r.accepted; }
+        auto request=build_ai_request(settings,key,ai_prompt_.data(),describe_sheet(sheet_,active_,anchor_));
+        std::fill(key.begin(),key.end(),'\0');
+        ai_session_->start(std::move(request)); ai_request_settings_=settings; ai_proposal_.reset();
+        ai_status_="Waiting for "+endpoint_host(settings.endpoint)+"...";
+    } catch(const std::exception& error) { ai_status_=error.what(); }
+}
+void GridUI::ai_poll() {
+    if(auto result=ai_session_->poll()) {
+        if(!result->second.empty()) { ai_status_=result->second; return; }
+        try {
+            ai_proposal_=parse_ai_proposal(extract_ai_text(ai_request_settings_,result->first),sheet_); ai_revision_=sheet_.revision(); ai_connection_collapse_=true;
+            ai_status_=ai_proposal_->edits.empty()?"No edits were proposed.":"Review the proposed edits, then apply the ones you want.";
+        } catch(const std::exception& error) { ai_status_=error.what(); }
+    }
+    if(ai_proposal_&&ai_revision_!=sheet_.revision()) { refresh_proposal(*ai_proposal_,sheet_); ai_revision_=sheet_.revision(); }
+}
+void GridUI::ai_apply() {
+    if(!ai_proposal_) return;
+    const auto batch=proposal_batch(*ai_proposal_);
+    if(batch.cells.empty()) { message_="Tick at least one proposed edit to apply."; return; }
+    auto result=sheet_.apply(batch);
+    if(!result.accepted) { message_=result.error->context; ai_status_="The edits could not be applied: "+message_; return; }
+    modified_=true; ai_proposal_.reset(); ai_status_="Applied. Ctrl+Z undoes all of these edits together.";
+    message_="Applied "+std::to_string(batch.cells.size())+" AI-proposed edits in one step.";
+}
+void GridUI::smoke_ai_proposal(std::string_view reply) {
+    ai_proposal_=parse_ai_proposal(reply,sheet_); ai_revision_=sheet_.revision(); ai_connection_collapse_=true; ai_status_="Smoke proposal.";
+}
+
 void GridUI::prepare() {
     try {
+        ai_poll();
         if(!queued_.cells.empty()) {
             const auto result=sheet_.apply(queued_);
             message_=result.accepted?"Changes applied.":result.error->context;
@@ -230,11 +402,20 @@ void GridUI::prepare() {
             message_=result.error?result.error->context:"Macro complete. "+std::to_string(result.writes)+" writes applied in one transaction.";
             modified_|=!result.error&&result.writes>0; break;
         }
-        case Action::New:sheet_=Sheet({},&lua_); select({0,0}); row_selection_.clear(); modified_=false; message_="New workbook. Changes are held in memory."; break;
-        case Action::Demo:load_demo(); break;
+        case Action::ImportXlsx:xlsx_file(false);break;
+        case Action::ExportXlsx:xlsx_file(true);break;
+        case Action::ImportCsv:csv_file(false);break;
+        case Action::ExportCsv:csv_file(true);break;
+        case Action::AiSend:ai_send();break;
+        case Action::AiApply:ai_apply();break;
+        case Action::Save:save();break;
+        case Action::SaveAs:save(true);break;
+        case Action::Open:open();break;
+        case Action::New:if(!confirm_close()) break; file_path_.clear(); workbook_name_="Untitled workbook"; file_label_.clear(); editor_dirty_=false; sheet_=Sheet({},&lua_); select({0,0}); row_selection_.clear(); modified_=false; message_="New workbook. Press Ctrl+S to save locally."; break;
+        case Action::Demo:if(confirm_close()) load_demo(); break;
         default:break;
         }
-        if(action_!=Action::None) { selection_changed_=true; action_=Action::None; }
+        if(action_!=Action::None) { if(action_!=Action::Save&&action_!=Action::SaveAs&&action_!=Action::Open&&action_!=Action::New&&action_!=Action::Demo&&action_!=Action::ImportCsv&&action_!=Action::ExportCsv&&action_!=Action::ImportXlsx&&action_!=Action::ExportXlsx&&action_!=Action::AiSend) selection_changed_=true; action_=Action::None; }
         if(counted_revision_!=sheet_.revision()) {
             populated_=sheet_.populated_cells(); counted_revision_=sheet_.revision();
         }
@@ -247,11 +428,130 @@ void GridUI::draw_script_panel(float height) {
     ImGui::Spacing(); ImGui::TextUnformatted("Make repetitive edits simple.");
     ImGui::TextWrapped("Macros use cell('A1') to read and set('A1', value) to queue changes. All edits apply together.");
     ImGui::Separator(); ImGui::Spacing();
-    ImGui::InputTextMultiline("##macro",script_.data(),script_.size(),{-1,std::max(100.0f,ImGui::GetContentRegionAvail().y-125*scale_)},ImGuiInputTextFlags_AllowTabInput);
+    if(ImGui::InputTextMultiline("##macro",script_.data(),script_.size(),{-1,std::max(100.0f,ImGui::GetContentRegionAvail().y-125*scale_)},ImGuiInputTextFlags_AllowTabInput)) modified_=true;
     if(ImGui::Button("Run macro",{150*scale_,32*scale_})) action_=Action::Macro; remember_target(MacroButton);
     ImGui::SameLine(); if(ImGui::Button("Undo macro")) action_=Action::Undo;
     ImGui::Spacing(); ImGui::TextDisabled("Local execution / bounded resources");
     ImGui::TextWrapped("No files, network, or system access. Failed scripts leave the sheet unchanged.");
+    ImGui::EndChild();
+}
+void GridUI::draw_ai_panel(float height) {
+    ImGui::BeginChild("AI assistant",{400*scale_,height},ImGuiChildFlags_Borders);
+    const auto accent=dark_?ImVec4{0.40f,0.85f,0.69f,1}:ImVec4{0.03f,0.43f,0.32f,1};
+    ImGui::TextUnformatted("AI ASSISTANT");
+    ImGui::SameLine(ImGui::GetContentRegionAvail().x-50*scale_); if(ImGui::SmallButton("Close")) ai_open_=false;
+    ImGui::TextWrapped("Describe a change. Your AI proposes cell edits; nothing changes until you apply them.");
+    ImGui::Spacing();
+    const bool anthropic=ai_settings_.provider==AiProvider::Anthropic;
+    if(ai_connection_open_) { ImGui::SetNextItemOpen(true); ai_connection_open_=false; }
+    else if(ai_connection_collapse_) { ImGui::SetNextItemOpen(false); ai_connection_collapse_=false; }
+    if(ImGui::CollapsingHeader("Connection",(!ai_key_saved_&&anthropic)?ImGuiTreeNodeFlags_DefaultOpen:0)) {
+        int provider=anthropic?0:1; const char* providers[]{"Anthropic (Claude)","OpenAI-compatible"};
+        ImGui::SetNextItemWidth(-1);
+        if(ImGui::Combo("##provider",&provider,providers,2)) { ai_use_settings(default_ai_settings(provider==0?AiProvider::Anthropic:AiProvider::OpenAICompatible)); save_ai_settings(ai_settings_); }
+        ImGui::PushTextWrapPos(0);
+        ImGui::TextDisabled(anthropic?"Uses your own Anthropic API account.":"OpenAI, Ollama, LM Studio and other servers with a /chat/completions endpoint.");
+        ImGui::PopTextWrapPos();
+        ImGui::TextUnformatted("Model"); ImGui::SetNextItemWidth(-1);
+        ImGui::InputTextWithHint("##model","Model name from your provider",ai_model_.data(),ai_model_.size());
+        ImGui::TextUnformatted("Endpoint"); ImGui::SetNextItemWidth(-1);
+        ImGui::InputText("##endpoint",ai_endpoint_.data(),ai_endpoint_.size());
+        if(ImGui::Button("Save connection")) {
+            AiSettings settings=ai_settings_; settings.model=ai_model_.data(); settings.endpoint=ai_endpoint_.data();
+            auto problem=validate_ai_endpoint(settings.endpoint);
+            if(!problem.empty()) ai_status_=problem;
+            else if(settings.model.empty()) ai_status_="Enter a model name.";
+            else { ai_settings_=settings; ai_status_=save_ai_settings(settings)?"Connection saved.":"Connection used for this session, but it could not be saved."; }
+        }
+        ImGui::Spacing(); ImGui::TextUnformatted("API key");
+        if(ai_key_saved_) {
+            ImGui::TextColored(accent,"Saved in Windows Credential Manager");
+            if(ImGui::Button("Remove key")) { ai_key_saved_=!delete_ai_key(ai_settings_.provider); ai_status_=ai_key_saved_?"The key could not be removed.":"Key removed from this computer."; }
+        } else {
+            ImGui::SetNextItemWidth(-90*scale_);
+            ImGui::InputTextWithHint("##key",anthropic?"sk-ant-...":"Optional for local servers",ai_key_.data(),ai_key_.size(),ImGuiInputTextFlags_Password);
+            ImGui::SameLine();
+            if(ImGui::Button("Save key",{-1,0})) {
+                if(ai_key_[0]==0) ai_status_="Paste your API key first.";
+                else if(store_ai_key(ai_settings_.provider,ai_key_.data())) { ai_key_saved_=true; ai_status_="Key saved securely for your Windows account."; }
+                else ai_status_="The key could not be saved.";
+                std::fill(ai_key_.begin(),ai_key_.end(),'\0');
+            }
+        }
+        ImGui::PushTextWrapPos(0);
+        ImGui::TextDisabled("Keys are kept by Windows for your user account, never in workbooks or settings files. Usage is billed by your provider.");
+        ImGui::PopTextWrapPos();
+    }
+    ImGui::Separator(); ImGui::Spacing();
+    const bool busy=ai_session_->busy();
+    if(!ai_proposal_) {
+    ImGui::TextUnformatted("What should change?");
+    ImGui::InputTextMultiline("##ai-prompt",ai_prompt_.data(),ai_prompt_.size(),{-1,86*scale_},busy?ImGuiInputTextFlags_ReadOnly:0);
+    const auto host=endpoint_host(ai_endpoint_.data());
+    ImGui::PushTextWrapPos(0);
+    ImGui::TextDisabled("Sends your request and up to 2,000 filled cells (this sheet has %zu) to %s.",populated_,host.empty()?"your provider":host.c_str());
+    ImGui::PopTextWrapPos();
+    if(busy) {
+        static const char* dots[]{"   ",".  ",".. ","..."};
+        ImGui::AlignTextToFramePadding(); ImGui::Text("Waiting for a proposal%s",dots[int(ImGui::GetTime()*3)%4]);
+        ImGui::SameLine(); if(ImGui::Button("Cancel")) ai_session_->cancel();
+    } else {
+        ImGui::BeginDisabled(ai_prompt_[0]==0||ai_proposal_.has_value());
+        if(ImGui::Button("Propose edits",{-1,32*scale_})) action_=Action::AiSend;
+        ImGui::EndDisabled();
+    }
+    }
+    if(!ai_status_.empty()) { ImGui::PushTextWrapPos(0); ImGui::TextUnformatted(ai_status_.c_str()); ImGui::PopTextWrapPos(); }
+    if(ai_proposal_) {
+        auto& proposal=*ai_proposal_;
+        ImGui::Separator(); ImGui::TextColored(accent,"Proposed changes");
+        ImGui::PushTextWrapPos(0);
+        if(!proposal.summary.empty()) ImGui::TextUnformatted(proposal.summary.c_str());
+        for(const auto& warning:proposal.warnings) ImGui::TextColored({0.85f,0.52f,0.08f,1},"%s",warning.c_str());
+        ImGui::PopTextWrapPos();
+        const auto selected=std::size_t(std::count_if(proposal.edits.begin(),proposal.edits.end(),[](const AiEdit& e){ return e.selected; }));
+        if(!proposal.edits.empty()) {
+            ImGui::AlignTextToFramePadding(); ImGui::Text("%zu of %zu edits ticked",selected,proposal.edits.size());
+            ImGui::SameLine(); if(ImGui::SmallButton("All")) for(auto& e:proposal.edits) e.selected=true;
+            ImGui::SameLine(); if(ImGui::SmallButton("None")) for(auto& e:proposal.edits) e.selected=false;
+            auto brief=[](const std::string& text) {
+                std::string line=text.substr(0,text.find_first_of("\r\n"));
+                if(line.size()>48) { line.resize(48); while(!line.empty()&&(static_cast<unsigned char>(line.back())&0xc0)==0x80) line.pop_back(); if(!line.empty()) line.pop_back(); line+="..."; }
+                else if(line.size()<text.size()) line+=" ...";
+                return line;
+            };
+            const float table_height=std::max(120*scale_,ImGui::GetContentRegionAvail().y-78*scale_);
+            ImGui::PushStyleColor(ImGuiCol_TableHeaderBg,ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+            const bool table=ImGui::BeginTable("ai-edits",4,ImGuiTableFlags_RowBg|ImGuiTableFlags_BordersInnerH|ImGuiTableFlags_ScrollY,{-1,table_height});
+            if(table) {
+                ImGui::TableSetupColumn("",ImGuiTableColumnFlags_WidthFixed,26*scale_);
+                ImGui::TableSetupColumn("Cell",ImGuiTableColumnFlags_WidthFixed,64*scale_);
+                ImGui::TableSetupColumn("Before",ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("After",ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupScrollFreeze(0,1); ImGui::TableHeadersRow();
+                ImGuiListClipper clipper; clipper.Begin(int(proposal.edits.size()));
+                while(clipper.Step()) for(int i=clipper.DisplayStart;i<clipper.DisplayEnd;++i) {
+                    auto& edit=proposal.edits[std::size_t(i)]; ImGui::PushID(i); ImGui::TableNextRow();
+                    ImGui::TableNextColumn(); ImGui::Checkbox("##on",&edit.selected);
+                    ImGui::TableNextColumn(); if(ImGui::Selectable(edit.address.c_str())) jump(edit.coord);
+                    if(ImGui::IsItemHovered()) ImGui::SetTooltip("Go to %s",edit.address.c_str());
+                    ImGui::TableNextColumn(); ImGui::TextDisabled("%s",brief(edit.before).c_str());
+                    if(ImGui::IsItemHovered()&&edit.before.size()>48) ImGui::SetTooltip("%s",edit.before.c_str());
+                    ImGui::TableNextColumn(); ImGui::TextUnformatted(brief(edit.after).c_str());
+                    if(ImGui::IsItemHovered()&&(edit.after.size()>48||edit.lua)) ImGui::SetTooltip("%s%s",edit.lua?"Runs a Lua script.\n":"",edit.after.c_str());
+                    ImGui::PopID();
+                }
+                ImGui::EndTable();
+            }
+            ImGui::PopStyleColor();
+            ImGui::BeginDisabled(selected==0);
+            char apply[48]; std::snprintf(apply,sizeof apply,"Apply %zu edit%s",selected,selected==1?"":"s");
+            if(ImGui::Button(apply,{180*scale_,32*scale_})) action_=Action::AiApply;
+            ImGui::EndDisabled(); ImGui::SameLine();
+        }
+        if(ImGui::Button(proposal.edits.empty()?"Dismiss":"Discard",{100*scale_,32*scale_})) { ai_proposal_.reset(); ai_status_="Proposal discarded. Nothing was changed."; }
+        ImGui::TextDisabled("Applied together as one step; Ctrl+Z undoes it.");
+    }
     ImGui::EndChild();
 }
 void GridUI::draw_grid(float width,float height) {
@@ -392,7 +692,8 @@ void GridUI::draw_grid(float width,float height) {
             ImGui::SetCursorScreenPos({x+2,y+2}); ImGui::SetNextItemWidth(cw-4);
             if(focus_editor_) { ImGui::SetKeyboardFocusHere(); focus_editor_=false; }
             if(ImGui::InputText("##cell-edit",editor_.data(),editor_.size(),ImGuiInputTextFlags_EnterReturnsTrue|ImGuiInputTextFlags_AutoSelectAll)) queue_edit();
-            if(ImGui::IsKeyPressed(ImGuiKey_Escape)) { editing_=false; selection_changed_=true; }
+            if(ImGui::IsItemEdited()) editor_dirty_=true;
+            if(ImGui::IsKeyPressed(ImGuiKey_Escape)) { editor_dirty_=false; editing_=false; selection_changed_=true; }
         }
     }
     ImGui::EndChild();
@@ -410,8 +711,8 @@ void GridUI::draw() {
     if(brand_icon) ImGui::GetWindowDrawList()->AddImage(static_cast<ImTextureID>(brand_icon),brand,{brand.x+30*scale_,brand.y+30*scale_});
     ImGui::Dummy({38*scale_,30*scale_}); ImGui::SameLine();
     ImGui::AlignTextToFramePadding(); ImGui::TextColored(accent,"JULRETSU");
-    ImGui::SameLine(180*scale_); ImGui::TextUnformatted("Untitled workbook");
-    ImGui::SameLine(); ImGui::TextDisabled(modified_?"  /  Unsaved changes":"  /  In memory");
+    ImGui::SameLine(180*scale_); ImGui::BeginChild("Workbook name",{280*scale_,34*scale_},0,ImGuiWindowFlags_NoScrollbar); ImGui::AlignTextToFramePadding(); ImGui::TextUnformatted(workbook_name_.c_str()); if(ImGui::IsItemHovered()) ImGui::SetTooltip("%s",file_path_.empty()?workbook_name_.c_str():file_label_.c_str()); ImGui::EndChild();
+    ImGui::SameLine(); ImGui::TextDisabled(modified()?"  /  Unsaved changes":(file_path_.empty()?"  /  Not saved yet":"  /  Saved to this device"));
     ImGui::SameLine(std::max(560*scale_,vp->WorkSize.x*0.48f));
     ImGui::SetNextItemWidth(std::max(140*scale_,vp->WorkSize.x*0.21f));
     if(ImGui::GetIO().KeyCtrl&&ImGui::IsKeyPressed(ImGuiKey_K)) ImGui::SetKeyboardFocusHere();
@@ -424,6 +725,41 @@ void GridUI::draw() {
     if(ImGui::Button(dark_?"Light mode":"Dark mode",{120*scale_,0})) set_dark(!dark_,remember_theme_);
     remember_target(ThemeButton);
     ImGui::Spacing();
+    if(ImGui::GetIO().KeyCtrl&&ImGui::IsKeyPressed(ImGuiKey_S)) action_=ImGui::GetIO().KeyShift?Action::SaveAs:Action::Save;
+    if(ImGui::GetIO().KeyCtrl&&ImGui::IsKeyPressed(ImGuiKey_O)) action_=Action::Open;
+    if(ImGui::GetIO().KeyCtrl&&ImGui::IsKeyPressed(ImGuiKey_N)) action_=Action::New;
+    if(!file_error_.empty()) ImGui::OpenPopup("File could not be saved or opened");
+    if(ImGui::BeginPopupModal("File could not be saved or opened",nullptr,ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::PushTextWrapPos(ImGui::GetCursorPosX()+500*scale_);ImGui::TextUnformatted(file_error_.c_str());ImGui::PopTextWrapPos();
+        if(ImGui::Button("OK")) {file_error_.clear();ImGui::CloseCurrentPopup();} ImGui::EndPopup();
+    }
+    if(ImGui::Button("File",{72*scale_,30*scale_})) ImGui::OpenPopup("File menu"); remember_target(FileButton);
+    ImGui::SetNextWindowSizeConstraints({540*scale_,0},{650*scale_,FLT_MAX});
+    if(ImGui::BeginPopup("File menu")) {
+        ImGui::TextColored(accent,"This workbook");
+        ImGui::TextUnformatted(workbook_name_.c_str());
+        ImGui::PushTextWrapPos(ImGui::GetCursorPosX()+420*scale_);
+        ImGui::TextDisabled("%s",file_path_.empty()?"Choose a folder to save this workbook.":file_label_.c_str()); ImGui::PopTextWrapPos();
+        ImGui::Spacing();ImGui::Separator();ImGui::Spacing();
+        if(ImGui::MenuItem("New workbook","Ctrl+N")) action_=Action::New;
+        if(ImGui::MenuItem("Open...","Ctrl+O")) action_=Action::Open;
+        ImGui::Separator();
+        if(ImGui::MenuItem("Save","Ctrl+S")) action_=Action::Save;
+        if(ImGui::MenuItem("Save As...","Ctrl+Shift+S")) action_=Action::SaveAs;
+        ImGui::Spacing();ImGui::Separator();
+        if(ImGui::MenuItem("Import CSV...")) action_=Action::ImportCsv;
+        if(ImGui::MenuItem("Export CSV (values)...")) action_=Action::ExportCsv;
+        ImGui::Separator();
+        if(ImGui::MenuItem("Import Excel (cached values)...")){xlsx_formulas_=false;action_=Action::ImportXlsx;}
+        if(ImGui::MenuItem("Import Excel (supported formulas)...")){xlsx_formulas_=true;action_=Action::ImportXlsx;}
+        if(ImGui::MenuItem("Export Excel (.xlsx)...")) action_=Action::ExportXlsx;
+        ImGui::Separator();
+        ImGui::TextDisabled("Julretsu Workbook (.julretsu)");
+        ImGui::TextDisabled("Keeps cells, formulas, row formatting and Lua scripts.");
+        ImGui::EndPopup();
+    }
+    ImGui::SameLine();
+
     const char* tabs[]{"Home","Format","Formulas","View","Help"};
     for(int i=0;i<5;++i) {
         if(i) ImGui::SameLine();
@@ -457,10 +793,12 @@ void GridUI::draw() {
         ImGui::EndGroup(); ImGui::SameLine(); divider();
         item("Clear",Glyph::Clear,Action::Clear,64); divider();
         if(ribbon_button("Functions",Glyph::Function,scale_,92)) guide_popup=true;
-        ImGui::SameLine(); if(ribbon_button("Lua scripts",Glyph::Code,scale_,96)) scripts_open_=!scripts_open_;
+        ImGui::SameLine(); if(ribbon_button("Lua scripts",Glyph::Code,scale_,96)) show_scripts(!scripts_open_);
+        ImGui::SameLine(); if(ribbon_button("Ask AI",Glyph::Ai,scale_,76)) show_ai(!ai_open_);
         if(vp->WorkSize.x>1200*scale_) { ImGui::SameLine(); divider(); if(ribbon_button("Appearance",Glyph::Sun,scale_,110)) settings_popup=true; }    } else if(ribbon_tab_==2) {
         if(ImGui::Button("Formula reference")) guide_popup=true;
-        ImGui::SameLine(); if(ImGui::Button("Open Lua workspace")) scripts_open_=true;
+        ImGui::SameLine(); if(ImGui::Button("Open Lua workspace")) show_scripts(true);
+        ImGui::SameLine(); if(ImGui::Button("Ask AI for formulas")) show_ai(true);
         ImGui::Spacing(); ImGui::TextDisabled("SUM  /  AVERAGE  /  IF  /  Lua-powered formulas");
     } else if(ribbon_tab_==3) {
         if(ImGui::Button(dark_?"Use light appearance":"Use dark appearance")) set_dark(!dark_,remember_theme_);
@@ -469,7 +807,7 @@ void GridUI::draw() {
         ImGui::Spacing(); ImGui::TextDisabled("Scroll with the mouse wheel. Hold Shift to scroll across columns.");
     } else {
         if(ImGui::Button("Keyboard shortcuts & formulas")) guide_popup=true;
-        ImGui::Spacing(); ImGui::TextDisabled("Open source. Local calculations. Your workspace, your way.");
+        ImGui::Spacing(); ImGui::TextDisabled("Local calculations. Optional AI with your own provider. Your workspace, your way.");
     }
     ImGui::EndChild();
     const float body_y=ImGui::GetCursorPosY();
@@ -484,9 +822,10 @@ void GridUI::draw() {
         glyph(d,{p.x+12*scale_,p.y+11*scale_},18*scale_,ImGui::GetColorU32(ImGuiCol_Text),icon);
         d->AddText({p.x+45*scale_,p.y+9*scale_},ImGui::GetColorU32(ImGuiCol_Text),text); return clicked;
     };
-    if(navigation("Sheets",Glyph::Sheet,!scripts_open_)) { scripts_open_=false; grid_focused_=true; }
+    if(navigation("Sheets",Glyph::Sheet,!scripts_open_&&!ai_open_)) { scripts_open_=false; ai_open_=false; grid_focused_=true; }
     if(navigation("Templates",Glyph::Book)) template_popup=true;
-    if(navigation("Lua workspace",Glyph::Code,scripts_open_)) scripts_open_=!scripts_open_;
+    if(navigation("Lua workspace",Glyph::Code,scripts_open_)) show_scripts(!scripts_open_);
+    if(navigation("AI assistant",Glyph::Ai,ai_open_)) show_ai(!ai_open_);
     if(navigation("Settings",Glyph::Settings)) settings_popup=true;    ImGui::SetCursorPosY(std::max(ImGui::GetCursorPosY()+12*scale_,body_height-220*scale_));
     ImGui::PushStyleColor(ImGuiCol_ChildBg,ImGui::GetStyleColorVec4(ImGuiCol_Header)); ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,{16*scale_,14*scale_}); ImGui::BeginChild("Tips",{0,206*scale_},ImGuiChildFlags_Borders);
     ImGui::PopStyleVar(); ImGui::PopStyleColor(); ImGui::TextColored(accent,"Work smarter"); ImGui::TextColored(accent,"with Julretsu");
@@ -504,13 +843,15 @@ void GridUI::draw() {
     ImGui::SameLine(); ImGui::TextColored(accent,"fx"); ImGui::SameLine();
     ImGui::SetNextItemWidth(std::max(60.0f,ImGui::GetContentRegionAvail().x-78*scale_));
     if(ImGui::InputText("##formula",editor_.data(),editor_.size(),ImGuiInputTextFlags_EnterReturnsTrue|(oversized_?ImGuiInputTextFlags_ReadOnly:0))) queue_edit();
+    if(ImGui::IsItemEdited()) editor_dirty_=true;
     remember_target(FormulaField); ImGui::PopStyleVar();
     if(ImGui::IsItemActive()) { grid_focused_=false; if(ImGui::IsKeyPressed(ImGuiKey_Escape)) { selection_changed_=true; grid_focused_=true; } }
     ImGui::SameLine(); if(ImGui::Button("Apply",{68*scale_,0})) queue_edit();
     const float height=std::max(100.0f,ImGui::GetContentRegionAvail().y-48*scale_);
-    const float width=ImGui::GetContentRegionAvail().x-(scripts_open_?362*scale_:0);
+    const float width=ImGui::GetContentRegionAvail().x-(scripts_open_?362*scale_:ai_open_?412*scale_:0);
     draw_grid(width,height);
     if(scripts_open_) { ImGui::SameLine(); draw_script_panel(height); }
+    else if(ai_open_) { ImGui::SameLine(); draw_ai_panel(height); }
     ImGui::PushStyleColor(ImGuiCol_Button,ImGui::GetStyleColorVec4(ImGuiCol_Header));
     if(ImGui::Button("Sheet 1",{110*scale_,32*scale_})) grid_focused_=true;
     ImGui::PopStyleColor(); ImGui::SameLine();
@@ -528,7 +869,7 @@ void GridUI::draw() {
     ImGui::SameLine(); ImGui::SetNextItemWidth(155*scale_);
     int zoom=int(zoom_*100+0.5f);
     if(ImGui::SliderInt("##zoom",&zoom,75,150,"%d%%",ImGuiSliderFlags_AlwaysClamp)) { zoom_=float(zoom)/100; set_scale(scale_); viewport_.reveal(active_); }
-    if(new_popup) ImGui::OpenPopup("New workbook?");
+    if(new_popup) action_=Action::New;
     if(template_popup) ImGui::OpenPopup("Templates");
     if(guide_popup) ImGui::OpenPopup("Formula guide");
     if(settings_popup) ImGui::OpenPopup("Settings");
@@ -539,15 +880,18 @@ void GridUI::draw() {
     }
     if(ImGui::BeginPopupModal("Templates",nullptr,ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::TextUnformatted("Project budget\nCategories, quantities, costs and automatic totals.");
-        ImGui::Spacing(); ImGui::TextUnformatted("Loading this template replaces the current in-memory workbook.");
-        if(ImGui::Button("Replace with project budget")) { action_=Action::Demo; ImGui::CloseCurrentPopup(); }
+        ImGui::Spacing(); ImGui::TextUnformatted("You can save the current workbook before loading this template.");
+        if(ImGui::Button("Use project budget")) { action_=Action::Demo; ImGui::CloseCurrentPopup(); }
         ImGui::SameLine(); if(ImGui::Button("Cancel")) ImGui::CloseCurrentPopup(); ImGui::EndPopup();
     }
     if(ImGui::BeginPopup("Settings")) {
         ImGui::TextUnformatted("Appearance"); bool dark=dark_;
         if(ImGui::Checkbox("Dark mode",&dark)) set_dark(dark,remember_theme_);
         ImGui::TextDisabled("Your appearance preference is remembered on this device.");
-        ImGui::Separator(); ImGui::TextUnformatted("Workbooks are currently held in memory. File saving is not available yet.");
+        ImGui::Separator(); ImGui::TextUnformatted("Save workbooks locally with File > Save or Ctrl+S.");
+        ImGui::Separator(); ImGui::TextUnformatted("AI assistant");
+        ImGui::TextDisabled("Optional. Connect your own provider in the AI assistant panel.");
+        if(ImGui::Button("Open AI assistant")) { show_ai(true); ImGui::CloseCurrentPopup(); }
         ImGui::EndPopup();
     }
     if(ImGui::BeginPopup("Formula guide")) {

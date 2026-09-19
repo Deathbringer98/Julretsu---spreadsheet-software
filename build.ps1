@@ -17,6 +17,8 @@ try {
     }
     if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) { throw 'Install CMake 3.20+ and a C++20 compiler.' }
     $pins = @{
+        MINIZ = 'miniz-3.1.2'
+        PUGIXML = 'pugixml-1.15'
         STB = 'stb-2c980bb59875b0d32144a71867fbdebb2f77cd20'
         IMGUI = 'imgui-f5befd2d29e66809cd1110a152e375a7f1981f06'
         GLFW = 'glfw-7b6aead9fb88b3623e3b3725ebb42670cbe4c579'
