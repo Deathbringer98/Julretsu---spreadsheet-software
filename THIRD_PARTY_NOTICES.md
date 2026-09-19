@@ -4,9 +4,6 @@ Julretsu project code is original and proprietary (all rights reserved); see LIC
 The components below keep their own licenses; the Julretsu license does not cover them.
 The dependency-free headless core contains no copied third-party library source.
 
-Product inspiration: https://github.com/genspark-ai/genoffice .
-No code, branding assets, or UI assets were copied from GenOffice.
-
 The native application uses:
 - Dear ImGui v1.91.9b: MIT, https://github.com/ocornut/imgui/blob/v1.91.9b/LICENSE.txt
 - GLFW 3.4: zlib/libpng, https://github.com/glfw/glfw/blob/3.4/LICENSE.md
