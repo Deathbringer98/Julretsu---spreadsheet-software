@@ -30,7 +30,7 @@ jobs:
             build/Julretsu-*.deb
             build/Julretsu-*.tar.gz
   macos:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - name: "Configure (universal build for Apple silicon and Intel)"
