@@ -1,7 +1,9 @@
 #include "julretsu/GridUI.hpp"
+#include "julretsu/WindowFrame.hpp"
 #include "julretsu/Branding.hpp"
 #include "julretsu/AllocationMetrics.hpp"
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <GLFW/glfw3.h>
@@ -48,6 +50,7 @@ void theme(float scale,bool dark=false) {
     ImGui::StyleColorsLight(); auto& s=ImGui::GetStyle();
     s.WindowPadding={16,14}; s.FramePadding={10,7}; s.ItemSpacing={9,8};
     s.WindowRounding=0; s.ChildRounding=6; s.FrameRounding=4;
+    s.Colors[ImGuiCol_MenuBarBg]={0.93f,0.95f,0.96f,1};
     s.Colors[ImGuiCol_WindowBg]={0.975f,0.98f,0.985f,1};
     s.Colors[ImGuiCol_ChildBg]={1,1,1,1};
     s.Colors[ImGuiCol_Text]={0.12f,0.17f,0.22f,1};
@@ -61,8 +64,10 @@ void theme(float scale,bool dark=false) {
     s.Colors[ImGuiCol_SliderGrab]={0.10f,0.48f,0.36f,1};
     s.Colors[ImGuiCol_Header]={0.79f,0.9f,0.85f,1};
     s.FrameRounding=6; s.ChildRounding=9; s.WindowPadding={12,12};
+    s.FrameBorderSize=1; // keeps checkboxes, sliders and colour swatches visible on popups in both themes
     s.Colors[ImGuiCol_Button]={0.95f,0.975f,0.975f,1};
     if(dark) {
+        s.Colors[ImGuiCol_MenuBarBg]={0.10f,0.15f,0.19f,1};
         s.Colors[ImGuiCol_WindowBg]={0.07f,0.105f,0.14f,1};
         s.Colors[ImGuiCol_ChildBg]={0.085f,0.125f,0.16f,1};
         s.Colors[ImGuiCol_PopupBg]={0.11f,0.155f,0.19f,1};
@@ -71,9 +76,9 @@ void theme(float scale,bool dark=false) {
         s.Colors[ImGuiCol_Button]={0.13f,0.19f,0.23f,1};
         s.Colors[ImGuiCol_ButtonHovered]={0.18f,0.32f,0.30f,1};
         s.Colors[ImGuiCol_ButtonActive]={0.19f,0.41f,0.35f,1};
-        s.Colors[ImGuiCol_FrameBg]={0.10f,0.15f,0.19f,1};
-        s.Colors[ImGuiCol_FrameBgHovered]={0.15f,0.24f,0.27f,1};
-        s.Colors[ImGuiCol_FrameBgActive]={0.17f,0.29f,0.29f,1};
+        s.Colors[ImGuiCol_FrameBg]={0.15f,0.21f,0.26f,1};
+        s.Colors[ImGuiCol_FrameBgHovered]={0.19f,0.28f,0.32f,1};
+        s.Colors[ImGuiCol_FrameBgActive]={0.21f,0.33f,0.33f,1};
         s.Colors[ImGuiCol_Border]={0.21f,0.28f,0.33f,1};
         s.Colors[ImGuiCol_Separator]=s.Colors[ImGuiCol_Border];
         s.Colors[ImGuiCol_CheckMark]={0.36f,0.82f,0.66f,1};
@@ -94,6 +99,8 @@ void font(float scale) {
     // OS-provided font; not redistributed. ASCII branding needs no CJK font.
     if(!io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segoeui.ttf",20*scale))
         io.Fonts->AddFontDefault(&config);
+    if(!io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/georgia.ttf",20*scale))io.Fonts->AddFontDefault(&config);
+    if(!io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/consola.ttf",20*scale))io.Fonts->AddFontDefault(&config);
 #else
     io.Fonts->AddFontDefault(&config);
 #endif
@@ -127,7 +134,7 @@ std::size_t memory_bytes() {
 }
 }
 int main(int argc,char** argv) {
-    bool smoke=false, benchmark=false, show=false, no_splash=false;
+    bool smoke=false, benchmark=false, show=false, no_splash=false, system_titlebar=false;
     std::string capture="julretsu";
     std::filesystem::path open_path;
     bool check_open=false;
@@ -141,6 +148,7 @@ int main(int argc,char** argv) {
             ++i;
         }
         else if(arg=="--smoke") smoke=true;
+        else if(arg=="--system-titlebar") system_titlebar=true;
         else if(arg=="--benchmark") benchmark=true;
         else if(arg=="--visible") show=true;
         else if(arg=="--no-splash") no_splash=true;
@@ -175,6 +183,10 @@ int main(int argc,char** argv) {
         Window window(glfwCreateWindow(1580,960,"Julretsu - Spreadsheet",nullptr,nullptr),glfwDestroyWindow);
         if(!window) throw std::runtime_error("OpenGL window creation failed.");
         glfwSetWindowSizeLimits(window.get(),1100,640,GLFW_DONT_CARE,GLFW_DONT_CARE);
+        julretsu::WindowFrame window_frame;
+#ifdef _WIN32
+        if(!system_titlebar) window_frame.install(glfwGetWin32Window(window.get()));
+#endif
         glfwMakeContextCurrent(window.get()); glfwSwapInterval(benchmark||smoke?0:1);
         ImGui::SetAllocatorFunctions(
             [](std::size_t n,void*)->void* { ++julretsu::metrics::imgui_allocations; julretsu::metrics::imgui_bytes+=n; return std::malloc(n); },
@@ -208,6 +220,8 @@ int main(int argc,char** argv) {
 #ifdef _WIN32
         app.native_window=glfwGetWin32Window(window.get());
 #endif
+        app.custom_frame=window_frame.active();
+        if(smoke||benchmark) app.disable_recovery();
         if(smoke||benchmark) app.set_dark(false,false);
         bool current_dark=app.dark(); theme(scale,current_dark);
         if(smoke&&std::getenv("JULRETSU_SETTINGS_PATH")) {
@@ -235,14 +249,21 @@ int main(int argc,char** argv) {
         }
         if(glfwWindowShouldClose(window.get())) return 0;
         if(smoke) {
+            julretsu::GridUI tool_check; tool_check.disable_recovery();
+            if(!tool_check.smoke_workbook_features(capture+"-features.julretsu"))throw std::runtime_error("Advanced workbook smoke checks failed");
+            std::cout<<"Cell styles, clipboard, sequences, worksheet links, multi-sheet persistence, filters and reports passed\n";
+            if(!tool_check.smoke_selection_tools()) throw std::runtime_error("Selection tools smoke checks failed");
+            if(!tool_check.smoke_safety_net(capture+"-safety.julretsu")) throw std::runtime_error("Safety net smoke checks failed");
+            std::cout<<"Safety net: typed outliers, change review, formula overwrite, partial sort, sheet check fix, saved history passed\n";
+            std::cout<<"Selection tools: totals, overwrite protection, fill, undo, search, statistics passed\n";
             std::cout<<"branding_assets_loaded="<<branding.loaded()<<"\n";
             if(!branding.loaded()) return 3;
         }
         std::vector<double> frames; frames.reserve(400);
         std::size_t cpp_allocations=0,imgui_allocations=0,grid_allocations=0;
         bool quit=false;
-        const int frame_limit=smoke?150:(benchmark?400:0);
-        const int warmup=smoke?110:60;
+        const int frame_limit=smoke?190:(benchmark?400:0);
+        const int warmup=smoke?150:60;
         int frame=0; bool smoke_ok=true;
         while(!quit) {
             auto start=Clock::now();
@@ -301,6 +322,20 @@ int main(int argc,char** argv) {
                     const bool ok=p&&p->edits.size()==3&&!p->edits[2].selected&&!app.sheet().cell({0,7});
                     std::cout<<"AI proposal preview (no sheet change)="<<ok<<"\n"; smoke_ok &= ok;
                 }
+                if(frame==127) app.smoke_health_example(true);
+                if(frame==131) { app.smoke_health_example(false); }
+                if(frame==132) app.smoke_open_review();
+                if(frame==137) app.smoke_close_review();
+                if(frame==138) { app.smoke_queue_edit({1,2},"This sentence is far too long to fit inside a single spreadsheet cell"); app.smoke_queue_edit({1,3},"123456789012345678"); }
+                if(frame==139) app.jump({0,0});
+                if(frame==118) app.smoke_workbook_window(1);
+                if(frame==122) app.smoke_workbook_window(2);
+                if(frame==126) { app.smoke_workbook_window(0); std::cout<<"title bar="<<(app.custom_frame?"custom":"system")<<" caption_height="<<app.caption_height()<<"\n"; smoke_ok &= !app.custom_frame||app.caption_height()>0; }
+                if(frame==112)app.smoke_show_report(true,{3,2},{8,4});
+                if(frame==116)app.smoke_show_report(false);
+                if(frame==106)app.smoke_show_format(true);
+                if(frame==108) {app.smoke_show_format(false);io.AddKeyEvent(ImGuiKey_Escape,true);}
+                if(frame==109)io.AddKeyEvent(ImGuiKey_Escape,false);
                 if(frame==103) app.smoke_ai_apply();
                 if(frame==105) {
                     const bool ok=!app.ai_proposal()&&app.sheet().read({0,7})==julretsu::Value{std::string("AI smoke")}&&app.sheet().read({19,1})==julretsu::Value{7.0}&&!app.sheet().cell({19,2});
@@ -342,7 +377,7 @@ int main(int argc,char** argv) {
                 }
                 if(frame==66) { io.AddMousePosEvent(app.targets[julretsu::GridUI::BoldButton].x,app.targets[julretsu::GridUI::BoldButton].y); io.AddMouseButtonEvent(0,true); }
                 if(frame==67) io.AddMouseButtonEvent(0,false);
-                if(frame==69) { const bool ok=app.sheet().row_style(3).bold; std::cout<<"row formatting="<<ok<<"\n"; smoke_ok &= ok; }
+                if(frame==69) { const bool ok=app.sheet().cell_style({3,7}).bold; std::cout<<"ribbon bold (selected cell)="<<ok<<"\n"; smoke_ok &= ok; }
                 if(frame==36) { io.AddKeyEvent(ImGuiMod_Ctrl,true); io.AddKeyEvent(ImGuiKey_Z,true); }
                 if(frame==37) { io.AddKeyEvent(ImGuiKey_Z,false); io.AddKeyEvent(ImGuiMod_Ctrl,false); }
                 if(frame==24||frame==38) {
@@ -362,12 +397,22 @@ int main(int argc,char** argv) {
             ImGui::NewFrame();
             const auto grid_before=julretsu::metrics::cpp_allocations.load();
             app.draw();
+            window_frame.update(app.caption_height(),app.caption_enabled(),app.caption_items());
             if(frame>=warmup) grid_allocations+=julretsu::metrics::cpp_allocations.load()-grid_before;
             ImGui::Render();
+            // Mismatched Begin/End calls are recovered silently in release builds; fail the smoke run instead.
+            if(smoke&&GImGui->ErrorCountCurrentFrame>0) { std::cerr<<"ImGui usage error on frame "<<frame<<'\n'; smoke_ok=false; }
             int width{},height{}; glfwGetFramebufferSize(window.get(),&width,&height);
             glViewport(0,0,width,height); glClearColor(0.97f,0.98f,0.985f,1); glClear(GL_COLOR_BUFFER_BIT);
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
             if(smoke&&frame==94) screenshot(capture+"-file-menu.bmp",width,height);
+            if(smoke&&frame==107)screenshot(capture+"-cell-format.bmp",width,height);
+            if(smoke&&frame==114)screenshot(capture+"-report-preview.bmp",width,height);
+            if(smoke&&frame==120)screenshot(capture+"-workbook-floating.bmp",width,height);
+            if(smoke&&frame==130)screenshot(capture+"-sheet-check.bmp",width,height);
+            if(smoke&&frame==135)screenshot(capture+"-review.bmp",width,height);
+            if(smoke&&frame==141)screenshot(capture+"-long-text.bmp",width,height);
+            if(smoke&&frame==124)screenshot(capture+"-workbook-minimized.bmp",width,height);
             if(smoke&&frame==101) screenshot(capture+"-ai-preview.bmp",width,height);
             if(smoke&&frame==1) screenshot(capture+"-light.bmp",width,height);
             if(smoke&&frame==78) screenshot(capture+"-dark.bmp",width,height);
@@ -388,6 +433,8 @@ int main(int argc,char** argv) {
             ++frame; if(frame_limit&&frame>=frame_limit) break;
             if(!frame_limit&&height==0) glfwWaitEventsTimeout(0.05);
         }
+        // A normal exit (work saved or deliberately discarded) needs no crash-recovery copy.
+        if(!frame_limit) app.discard_recovery();
         if(frame_limit) {
             std::sort(frames.begin(),frames.end());
             auto percentile=[&](double p){return frames[std::min(frames.size()-1,std::size_t(std::ceil(double(frames.size())*p))-1)];};

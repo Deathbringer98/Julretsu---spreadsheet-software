@@ -56,10 +56,10 @@ void replace_file(const std::filesystem::path& path,std::string_view bytes) {
 }
 }
 void write_file_atomic(const std::filesystem::path& path,std::string_view bytes) { replace_file(path,bytes); }
-void write_workbook(const std::filesystem::path& path,const Sheet& sheet,std::string_view script) {
+std::string serialize_sheet(const Sheet& sheet,std::string_view script) {
     if(script.size()>16384) throw std::runtime_error("The Lua script exceeds the supported limit.");
     std::ostringstream out(std::ios::binary);
-    out.write("JULRETSU",8); number(out,1,4); number(out,sheet.populated_cells(),4);
+    out.write("JULRETSU",8); number(out,4,4); number(out,sheet.populated_cells(),4);
     for(const auto& [row,cells]:sheet.populated_rows()) for(const auto& [column,cell]:cells) {
         number(out,row,4); number(out,column,4); number(out,cell.input.index(),1);
         if(auto n=std::get_if<double>(&cell.input)) number(out,std::bit_cast<std::uint64_t>(*n),8);
@@ -71,16 +71,43 @@ void write_workbook(const std::filesystem::path& path,const Sheet& sheet,std::st
     for(const auto& [row,style]:sheet.row_styles()) {
         number(out,row,4); number(out,style.bold,1); number(out,style.foreground,4); number(out,style.background,4); number(out,style.decimals,1);
     }
-    text(out,script); const auto bytes=out.str();
+    number(out,sheet.cell_styles().size(),4);
+    for(const auto& [coord,style]:sheet.cell_styles()) {
+        number(out,coord.row,4); number(out,coord.column,4); number(out,style.bold,1);
+        number(out,style.foreground,4); number(out,style.background,4); number(out,style.decimals,1);
+        number(out,style.alignment,1); number(out,style.number_format,1); number(out,style.font_size,1); number(out,style.border,1); number(out,style.font_family,1);
+    }
+    text(out,script);
+    // Change history, newest records first until a 4 MiB budget, written oldest first.
+    const auto& journal=sheet.journal(); std::size_t first=journal.size(), bytes_used=0;
+    while(first>0) {
+        const auto& record=journal[first-1]; std::size_t size=32+record.label.size();
+        for(const auto& change:record.cells) size+=18+change.before.size()+change.after.size();
+        if(bytes_used+size>4*1024*1024) break;
+        bytes_used+=size; --first;
+    }
+    number(out,journal.size()-first,4);
+    for(std::size_t i=first;i<journal.size();++i) {
+        const auto& record=journal[i];
+        number(out,std::uint64_t(record.time),8); text(out,record.label.substr(0,128)); number(out,record.total_cells,4); number(out,record.formats,4);
+        number(out,record.cells.size(),4);
+        for(const auto& change:record.cells) {
+            number(out,change.coord.row,4); number(out,change.coord.column,4); number(out,change.before_kind,1); number(out,change.after_kind,1);
+            text(out,change.before); text(out,change.after);
+        }
+    }
+    const auto bytes=out.str();
     if(bytes.size()>maximum_file) throw std::runtime_error("Workbook exceeds the supported file size.");
-    replace_file(path,bytes);
+    return bytes;
 }
-WorkbookData read_workbook(const std::filesystem::path& path) {
-    std::ifstream in(path,std::ios::binary|std::ios::ate);
-    if(!in) throw std::runtime_error("Cannot open the workbook. Check that the file exists and is readable.");
-    if(in.tellg()<16||in.tellg()>std::streamoff(maximum_file)) throw std::runtime_error("Invalid workbook size.");
+void write_workbook(const std::filesystem::path& path,const Sheet& sheet,std::string_view script) { replace_file(path,serialize_sheet(sheet,script)); }
+WorkbookData deserialize_sheet(std::string_view bytes) {
+    std::istringstream in(std::string(bytes),std::ios::binary);
+    if(bytes.size()<16||bytes.size()>maximum_file)throw std::runtime_error("Invalid workbook size.");
+
     in.seekg(0); char magic[8]{}; in.read(magic,8);
-    if(std::string_view(magic,8)!="JULRETSU"||number(in,4)!=1) throw std::runtime_error("This is not a supported Julretsu workbook. Choose a .julretsu file.");
+    const auto version=number(in,4);
+    if(std::string_view(magic,8)!="JULRETSU"||(version<1||version>4)) throw std::runtime_error("This is not a supported Julretsu workbook. Choose a .julretsu file.");
     WorkbookData result; Limits limits; std::size_t budget=limits.sheet_input_bytes;
     const auto count=number(in,4); if(count>limits.populated_cells) throw std::runtime_error("Workbook has too many cells.");
     std::set<CellCoord> seen;
@@ -107,8 +134,65 @@ WorkbookData read_workbook(const std::filesystem::path& path) {
         if(style.decimals>12) throw std::runtime_error("Unsupported decimal format in workbook.");
         result.data.rows.push_back({row,style});
     }
+    if(version>=2) {
+        const auto count=number(in,4); if(count>limits.populated_cells) throw std::runtime_error("Too many cell formats.");
+        std::set<CellCoord> seen_formats;
+        for(std::uint64_t i=0;i<count;++i) {
+            CellCoord c{std::uint32_t(number(in,4)),std::uint32_t(number(in,4))};
+            Style style; const auto bold=number(in,1); style.bold=bold!=0;
+            style.foreground=std::uint32_t(number(in,4)); style.background=std::uint32_t(number(in,4)); style.decimals=std::uint8_t(number(in,1));
+            style.alignment=std::uint8_t(number(in,1)); style.number_format=std::uint8_t(number(in,1)); style.font_size=std::uint8_t(number(in,1)); const auto border=number(in,1); style.border=border!=0;if(version>=3)style.font_family=std::uint8_t(number(in,1));
+            if(!c.valid()||!seen_formats.insert(c).second||bold>1||border>1||style.decimals>12||style.alignment>3||style.number_format>5||style.font_size<8||style.font_size>36||style.font_family>2) throw std::runtime_error("Invalid cell format.");
+            result.data.formats.push_back({c,style});
+        }
+    }
     budget=16384;result.script=text(in,16384,budget);
+    if(version>=4) {
+        const auto records=number(in,4); if(records>journal_records) throw std::runtime_error("Too many history records in workbook.");
+        std::size_t history_budget=8*1024*1024;
+        for(std::uint64_t i=0;i<records;++i) {
+            ChangeRecord record; record.time=std::int64_t(number(in,8)); record.label=text(in,128,history_budget);
+            record.total_cells=std::uint32_t(number(in,4)); record.formats=std::uint32_t(number(in,4));
+            const auto cells=number(in,4); if(cells>journal_cells_per_record) throw std::runtime_error("Invalid history record in workbook.");
+            for(std::uint64_t j=0;j<cells;++j) {
+                CellChange change; change.coord={std::uint32_t(number(in,4)),std::uint32_t(number(in,4))};
+                change.before_kind=std::uint8_t(number(in,1)); change.after_kind=std::uint8_t(number(in,1));
+                if(!change.coord.valid()||change.before_kind>4||change.after_kind>4) throw std::runtime_error("Invalid history record in workbook.");
+                change.before=text(in,journal_text+8,history_budget); change.after=text(in,journal_text+8,history_budget);
+                record.cells.push_back(std::move(change));
+            }
+            result.journal.push_back(std::move(record));
+        }
+    }
     if(result.script.find('\0')!=std::string::npos||in.peek()!=EOF) throw std::runtime_error("Unexpected data in workbook.");
     return result;
 }
+std::string file_bytes(const std::filesystem::path& path) {
+    std::ifstream in(path,std::ios::binary|std::ios::ate);
+    if(!in||in.tellg()<0||in.tellg()>std::streamoff(maximum_file))throw std::runtime_error("Cannot read workbook or size limit exceeded.");
+    std::string bytes(std::size_t(in.tellg()),'\0');in.seekg(0);in.read(bytes.data(),std::streamsize(bytes.size()));if(!in)throw std::runtime_error("Cannot read complete workbook.");return bytes;
+}
+WorkbookData read_workbook(const std::filesystem::path& path) {return deserialize_sheet(file_bytes(path));}
+void write_document(const std::filesystem::path& path,const std::vector<DocumentSheet>& sheets) {
+    if(sheets.empty()||sheets.size()>64)throw std::runtime_error("A workbook supports 1 to 64 sheets.");
+    std::ostringstream out(std::ios::binary);out.write("JULBOOK1",8);number(out,sheets.size(),4);std::set<std::string> names;
+    for(const auto& sheet:sheets) {
+        if(sheet.name.empty()||sheet.name.size()>64||!names.insert(sheet.name).second)throw std::runtime_error("Sheet names must be unique and at most 64 bytes.");
+        text(out,sheet.name);text(out,sheet.bytes);
+    }
+    auto bytes=out.str();if(bytes.size()>maximum_file)throw std::runtime_error("Workbook exceeds 40 MiB.");replace_file(path,bytes);
+}
+std::vector<DocumentSheet> read_document(const std::filesystem::path& path) {
+    auto bytes=file_bytes(path);if(bytes.substr(0,8)=="JULRETSU") { (void)deserialize_sheet(bytes);return {{"Sheet 1",std::move(bytes)}}; }
+    if(bytes.substr(0,8)!="JULBOOK1")throw std::runtime_error("Unsupported workbook.");
+    std::istringstream in(bytes,std::ios::binary);in.seekg(8);auto count=number(in,4);if(count<1||count>64)throw std::runtime_error("Invalid worksheet count.");
+    std::size_t budget=maximum_file;std::vector<DocumentSheet> result;std::set<std::string> names;
+    for(unsigned i=0;i<count;++i) {
+        auto name=text(in,64,budget),data=text(in,maximum_file,budget);
+        if(name.empty()||name.find('\0')!=std::string::npos||!names.insert(name).second)throw std::runtime_error("Invalid worksheet name.");
+        (void)deserialize_sheet(data);result.push_back({std::move(name),std::move(data)});
+    }
+    if(in.peek()!=EOF)throw std::runtime_error("Unexpected workbook data.");return result;
+}
+
 }

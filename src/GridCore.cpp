@@ -1,5 +1,9 @@
 #include "julretsu/GridCore.hpp"
 #include <algorithm>
+#include <atomic>
+#include <array>
+#include <charconv>
+#include <chrono>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -151,9 +155,9 @@ CommitResult Sheet::apply(const Batch& batch) {
     auto reject=[&](ErrorCode code,std::string context) {
         result.error=CellError{code,std::move(context),{}}; return result;
     };
-    if(batch.cells.size()>limits_.batch_edits||batch.rows.size()>limits_.batch_edits)
+    if(batch.cells.size()>limits_.batch_edits||batch.rows.size()>limits_.batch_edits||batch.formats.size()>limits_.batch_edits)
         return reject(ErrorCode::Limit,"Batch edit limit");
-    if(batch.cells.empty()&&batch.rows.empty()) { result.accepted=true; return result; }
+    if(batch.cells.empty()&&batch.rows.empty()&&batch.formats.empty()) { result.accepted=true; return result; }
     if(revision_==std::numeric_limits<std::uint64_t>::max()) return reject(ErrorCode::Limit,"Revision exhausted");
     try {
         std::size_t batch_bytes=0;
@@ -183,6 +187,9 @@ CommitResult Sheet::apply(const Batch& batch) {
         for(const auto& edit:batch.rows)
             if(edit.row>=max_rows || (edit.style&&edit.style->decimals>15))
                 return reject(ErrorCode::Value,"Invalid row style");
+        for(const auto& edit:batch.formats)
+            if(!edit.coord.valid()||(edit.style&&(edit.style->decimals>12||edit.style->alignment>3||edit.style->number_format>5||edit.style->font_size<8||edit.style->font_size>36||edit.style->font_family>2)))
+                return reject(ErrorCode::Value,"Invalid cell formatting");
         State staged=state_; // Strong transaction boundary; see complexity contract.
         std::set<CellCoord> dirty;
         for(auto& [coord,cell]:candidates) {
@@ -211,6 +218,11 @@ CommitResult Sheet::apply(const Batch& batch) {
             if(edit.style&&*edit.style!=Style{}) staged.styles.insert_or_assign(edit.row,*edit.style);
             else staged.styles.erase(edit.row);
         }
+        for(const auto& edit:batch.formats) {
+            if(edit.style) staged.formats.insert_or_assign(edit.coord,*edit.style);
+            else staged.formats.erase(edit.coord);
+        }
+        if(staged.formats.size()>limits_.populated_cells) return reject(ErrorCode::Limit,"Cell format limit");
         std::size_t cells=0, bytes=0, edges=0;
         for(const auto& [r,row]:staged.rows) {
             (void)r; cells+=row.size();
@@ -262,6 +274,7 @@ CommitResult Sheet::apply(const Batch& batch) {
         }
         // No throwing work beyond this point.
         state_=std::move(staged); redo_.clear(); ++revision_;
+        if(!undo_.empty()) record_change(undo_.back(),{});
         result.accepted=true; result.revision=revision_; return result;
     } catch(const CellError& error) {
         return reject(error.code,error.context);
@@ -283,12 +296,75 @@ bool Sheet::undo() {
     if(undo_.empty()||revision_==std::numeric_limits<std::uint64_t>::max()) return false;
     redo_.push_back(state_); state_=std::move(undo_.back()); undo_.pop_back(); ++revision_;
     for(auto& [r,row]:state_.rows) { (void)r; for(auto& [c,cell]:row) { (void)c; cell.revision=revision_; } }
+    record_change(redo_.back(),"Undo");
     return true;
 }
 bool Sheet::redo() {
     if(redo_.empty()||revision_==std::numeric_limits<std::uint64_t>::max()) return false;
     undo_.push_back(state_); state_=std::move(redo_.back()); redo_.pop_back(); ++revision_;
     for(auto& [r,row]:state_.rows) { (void)r; for(auto& [c,cell]:row) { (void)c; cell.revision=revision_; } }
+    record_change(undo_.back(),"Redo");
     return true;
+}
+namespace {
+std::string history_text(const Input& input) {
+    std::string text;
+    if(auto f=std::get_if<FormulaInput>(&input)) text=f->source;
+    else if(auto t=std::get_if<std::string>(&input)) text=*t;
+    else if(auto b=std::get_if<bool>(&input)) text=*b?"TRUE":"FALSE";
+    else if(auto n=std::get_if<double>(&input)) { std::array<char,64> buffer{}; auto [end,e]=std::to_chars(buffer.data(),buffer.data()+buffer.size(),*n); if(e==std::errc{}) text.assign(buffer.data(),end); }
+    if(text.size()>journal_text) {
+        std::size_t cut=journal_text; while(cut>0&&(static_cast<unsigned char>(text[cut])&0xc0)==0x80) --cut;
+        text.resize(cut); text+="...";
+    }
+    return text;
+}
+// Visits every key present in either ordered map, pairing the values (nullptr when absent).
+template<class Map,class F> void merge_maps(const Map& a,const Map& b,F&& visit) {
+    auto i=a.begin(); auto j=b.begin();
+    while(i!=a.end()||j!=b.end()) {
+        if(j==b.end()||(i!=a.end()&&i->first<j->first)) { visit(i->first,&i->second,nullptr); ++i; }
+        else if(i==a.end()||j->first<i->first) { visit(j->first,nullptr,&j->second); ++j; }
+        else { visit(i->first,&i->second,&j->second); ++i; ++j; }
+    }
+}
+}
+void Sheet::record_change(const State& before,std::string label) {
+    if(suppress_journal_) return;
+    try {
+        ChangeRecord record;
+        const Input empty;
+        merge_maps(before.rows,state_.rows,[&](std::uint32_t r,const Row* a,const Row* b) {
+            const Row none;
+            merge_maps(a?*a:none,b?*b:none,[&](std::uint32_t c,const Cell* x,const Cell* y) {
+                const Input& old_input=x?x->input:empty; const Input& new_input=y?y->input:empty;
+                if(old_input==new_input) return;
+                ++record.total_cells;
+                if(record.cells.size()<journal_cells_per_record)
+                    record.cells.push_back({{r,c},history_text(old_input),history_text(new_input),std::uint8_t(old_input.index()),std::uint8_t(new_input.index())});
+            });
+        });
+        merge_maps(before.formats,state_.formats,[&](const CellCoord&,const Style* x,const Style* y) { if(!x||!y||!(*x==*y)) ++record.formats; });
+        merge_maps(before.styles,state_.styles,[&](std::uint32_t,const Style* x,const Style* y) { if(!x||!y||!(*x==*y)) ++record.formats; });
+        if(!record.total_cells&&!record.formats) return; // recalculation only; nothing a person changed
+        const bool explicit_label=!label.empty();
+        record.label=explicit_label?std::move(label):next_label_.empty()?std::string("Edit"):next_label_;
+        if(!explicit_label) next_label_.clear();
+        record.time=std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        journal_.push_back(std::move(record)); ++journal_serial_;
+        if(journal_.size()>journal_records) journal_.erase(journal_.begin(),journal_.begin()+std::ptrdiff_t(journal_.size()-journal_records));
+    } catch(...) {} // history is best effort; the edit itself is already committed
+}
+std::uint64_t Sheet::next_instance() { static std::atomic<std::uint64_t> next{1}; return next++; }
+void Sheet::set_journal(std::vector<ChangeRecord> journal) {
+    if(journal.size()>journal_records) journal.erase(journal.begin(),journal.begin()+std::ptrdiff_t(journal.size()-journal_records));
+    for(auto& record:journal) if(record.cells.size()>journal_cells_per_record) record.cells.resize(journal_cells_per_record);
+    journal_=std::move(journal);
+}
+bool Sheet::revert_last_change() {
+    const auto serial=journal_serial_;
+    suppress_journal_=true; const bool undone=undo(); suppress_journal_=false;
+    if(undone&&!journal_.empty()&&serial==journal_serial_) journal_.pop_back();
+    return undone;
 }
 }

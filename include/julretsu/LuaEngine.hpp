@@ -18,6 +18,8 @@ struct MacroResult {
 class LuaEngine final : public FormulaExtension {
     LuaLimits limits_;
 public:
+    std::function<Value(std::string_view,CellCoord)> sheet_reader;
+    Value sheet_reference(std::string_view name,CellCoord c) const override {return sheet_reader?sheet_reader(name,c):Value{CellError{ErrorCode::Ref,"Unknown worksheet",{}}};}
     explicit LuaEngine(LuaLimits limits = {});
     Value evaluate(std::span<const Value>,std::size_t work_budget) const override;
     Value evaluate_with_context(std::span<const Value>,std::size_t work_budget,const ExtensionContext&) const override;

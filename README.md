@@ -1,4 +1,4 @@
-# Julretsu 0.4.0
+# Julretsu 0.5.0
 ### A native spreadsheet workbench
 
 Julretsu now includes a Windows-tested native ImGui application, a sparse C++20
@@ -10,7 +10,7 @@ locally in this Windows session.
 
 ## Start the app
 Double-click **Start Julretsu.cmd** in this folder, or open
-**release/Julretsu-0.4.0/Julretsu.exe**. Keep the supplied DLLs beside the executable.
+**release/Julretsu-0.5.0/Julretsu.exe**. Keep the supplied DLLs beside the executable.
 
 [Quick start and controls](docs/QUICKSTART.md) ·
 [Steps 3–4 acceptance report](docs/ACCEPTANCE-0.2.md) ·
@@ -107,3 +107,15 @@ Read [architecture](docs/ARCHITECTURE.md), [formula semantics](docs/FORMULAS.md)
 [dependencies](docs/DEPENDENCIES.md), and [remaining work](docs/ROADMAP.md).
 The earlier docs/ACCEPTANCE.md is the historical Steps 1–2 report.
 
+
+## Workbook editing update (0.5)
+Clipboard editing, cell-level formatting, formula-aware drag fill, row/column operations,
+sorting, text filters, frozen headers, multiple native worksheets, recovery copies,
+and chart/print-to-PDF reports are now available. The window uses an Office-style title bar with
+workbook minimize/restore/close controls and an Excel-style grouped Home ribbon.
+A built-in safety net catches common spreadsheet mistakes: risky changes (large pastes, partial
+sorts, overwritten formulas, out-of-scale numbers) are reviewed before you keep them, a live sheet
+check flags broken formula patterns, totals that skip rows, numbers stored as text and blank rows
+in tables, and every change is recorded in a per-cell history saved with the workbook. See [Quick start](docs/QUICKSTART.md)
+for controls and current compatibility limits. Native files preserve the new formatting
+and worksheet features; Excel export currently remains limited to the active sheet.

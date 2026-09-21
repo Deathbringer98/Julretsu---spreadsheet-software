@@ -31,6 +31,52 @@ The native .julretsu format keeps cells, formulas, row formatting, and the Lua s
 - The panel says how many cells will be sent and to which server before you send.
   Details: docs/AI.md.
 
+## Title bar and ribbon
+- The top two rows are Julretsu's title bar. Drag any blank part to move the window, double-click it
+  to maximize, or drag it to a screen edge to snap. Minimize, maximize and close are at the top right;
+  Save, Undo and Redo sit beside the menus. Start with `--system-titlebar` to use the standard Windows
+  title bar instead.
+- Beside the ribbon tabs: collapse or show the ribbon, open help, and control the workbook itself:
+  minimize it to a small bar, restore it into a movable window inside Julretsu, maximize it again,
+  or close it (you are asked to save first; a blank workbook opens).
+- The Home ribbon follows Excel's layout:
+  - **Clipboard:** Paste (or Paste values), Cut, Copy.
+  - **Font:** font, size, bigger/smaller, bold, borders, fill colour and font colour.
+  - **Alignment:** left, centre, right or automatic.
+  - **Number:** number format, currency ($1,234.00), percent, comma style (1,234.00), fewer/more decimals.
+  - **Styles:** cell styles (Good, Bad, Neutral, Title, Headings, Total, Input, Note, Accent) and table styles.
+  - **Cells:** insert/delete rows, columns and worksheets, and cell formatting.
+  - **Editing:** AutoSum, Fill, Clear (all, formats or contents), Sort & Filter, Find & Select.
+  - **Assist:** Ask AI, functions, Lua scripts and appearance.
+- Home formatting applies to the selected cells, like Excel. If you selected whole rows with the row
+  headers, it formats those rows instead. Every change can be undone with Ctrl+Z.
+
+## Safety net: catch mistakes before they cost you
+- **Review before keeping risky changes.** After a big paste, fill, clear or Lua macro, a sort that
+  leaves neighbouring columns behind, deleting a row or column that held data, overwriting formulas,
+  or entering a number wildly out of scale, Julretsu shows **Review this change**. The result is
+  already visible in the sheet. **Keep change** (Enter) accepts it; **Undo change** (Esc) puts
+  everything back exactly. Set the size limit, or turn reviews off, on the **Review** tab.
+- **Instant typo check.** Typing a number far larger or smaller than the rest of its column (extra
+  zeros, a slipped decimal point) shows a warning in the status bar right away. Ctrl+Z undoes it.
+- **Sheet check.** The badge at the bottom-left counts problems. Click it, or choose Review > Check
+  sheet, to see them. It looks for:
+  - a typed number, or a different formula, inside a column of matching formulas;
+  - SUM or AVERAGE ranges that stop short of neighbouring numbers;
+  - out-of-scale numbers;
+  - numbers stored as text (which totals silently skip);
+  - blank rows that split a table (which break sorting and filtering).
+
+  Each problem has **Go to**, a one-click **fix** where one is safe, and **Ignore**. Fixes can be
+  undone like any edit.
+- **Cell history.** Right-click a cell, or choose Review > Cell history, to see every change to that
+  cell: when, what action, and the value before and after. Review > Change log lists every change on
+  the sheet. History, including undo and redo, is saved inside the .julretsu file (the latest 1,000
+  changes; very large changes list their first 200 cells). Clear it from the Change log if you share
+  the file and don't want the history included.
+- Workbooks saved by this version use file format 4, which records history. Older versions of
+  Julretsu cannot open them; this version still opens older files.
+
 ## Edit your sheet
 - Click a cell; double-click or press F2 to edit it.
 - Enter applies an edit; Escape cancels.
@@ -80,5 +126,15 @@ process, network, module loading, debug, pcall/xpcall, or shared global state.
 Instruction, memory, output, host-call, row, and write limits bound execution.
 A failed macro leaves the sheet unchanged.
 
-The optional Connect Your AI feature and Excel file compatibility are future
-milestones. There are no API keys, remote calls, or paid inference in this build.
+## Workbook tools (0.5)
+- Edit menu or Ctrl+C/X/V: copy, cut, paste; Ctrl+Shift+V pastes values. Select a rectangular range, up to 10,000 cells. Internal copies preserve types and cell formatting; external text uses tab-separated rows with quoted multiline cells. External formulas stay literal until explicitly edited. Cut clears source cells only after successful paste within the same sheet; it does not rewrite formulas elsewhere that point at the moved cells.
+- Format > Format selected cells: choose sans/serif/monospace, size, bold, text/fill colours, borders, alignment, numbers, dollar currency, percentages or Excel-serial dates. Native saving preserves cell formatting. Row-format commands remain separate.
+- Drag the small selection-corner handle down or right to extend formulas or patterns. Two numeric seed cells extend a sequence. Relative A1 references adjust; $ anchors remain fixed. Fill is bounded to 10,000 cells.
+- Data: insert/delete the active row or column, sort a rectangular selection using its active column, or filter by text in the active column. Exclude the header from sorting. Filters retain row 1; clear filtering before bulk edits to protect hidden rows.
+- Structural edits update ordinary references. Deleting a referenced row/column is rejected; workbooks with dynamic SHEET/LUA references require those references to be removed first. These limits prevent silently incorrect formulas.
+- View: freeze first row, first column, or both; show formulas; toggle gridlines.
+- Workbook > Manage sheets: add, duplicate, rename, move, delete or switch sheets (up to 64). The sheet button also opens the sheet switcher. Use =SHEET("Budget","A1") to reference another worksheet. Cycles and excessive evaluation return errors. Lua through cross-sheet links is unsupported. Sheet deletion is confirmed and cannot be undone.
+- Workbook: after a minute of unsaved changes, Julretsu keeps a crash-recovery copy (including unfinished cell input) and refreshes it every minute. If Julretsu closes unexpectedly, a recovery prompt appears at the next start: Restore, then Save As to keep the recovered work. The copy is deleted after a successful save, a normal exit, or choosing Keep or Restore. It is one rolling copy per Windows user, not a version history.
+- Reports > Chart / print selected range: bar or line chart from the active numeric column, title, portrait/landscape and repeating first row. Print includes chart and table; choose Microsoft Print to PDF to save PDF. Reports are snapshots rather than saved chart objects. Maximum 12 columns / 10,000 cells; long printed text is ellipsized.
+
+Use native .julretsu saving to preserve multiple sheets and individual-cell formatting. Older native files open; new files require this version. CSV and Excel export still target the active sheet and retain their previously documented format limits (new cell-level formatting is not exported to Excel yet). Theme, filter, freeze and chart-preview choices are session-only.

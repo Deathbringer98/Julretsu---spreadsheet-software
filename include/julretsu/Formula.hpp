@@ -27,6 +27,7 @@ struct ExtensionContext { CellReader read; };
 class FormulaExtension {
 public:
     virtual ~FormulaExtension() = default;
+    virtual Value sheet_reference(std::string_view,CellCoord) const { return CellError{ErrorCode::Ref,"Worksheet reference is unavailable",{}}; }
     virtual Value evaluate(std::span<const Value> arguments, std::size_t work_budget) const = 0;
     virtual Value evaluate_with_context(std::span<const Value> arguments, std::size_t work_budget,
                                        const ExtensionContext&) const {

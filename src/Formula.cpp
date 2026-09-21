@@ -43,11 +43,11 @@ class Parser {
             }
             fail(ErrorCode::Parse,"Unterminated string");
         }
-        if((c>='a'&&c<='z')||(c>='A'&&c<='Z')||c=='_') {
+        if((c>='a'&&c<='z')||(c>='A'&&c<='Z')||c=='_'||c=='$') {
             token_.kind=TokenKind::Word;
             while(pos_<source_.size()) {
                 char d=source_[pos_];
-                if(!((d>='a'&&d<='z')||(d>='A'&&d<='Z')||(d>='0'&&d<='9')||d=='_')) break;
+                if(!((d>='a'&&d<='z')||(d>='A'&&d<='Z')||(d>='0'&&d<='9')||d=='_'||d=='$')) break;
                 token_.text.push_back(d>='a'&&d<='z'?static_cast<char>(d-'a'+'A'):d); ++pos_;
             } return;
         }
@@ -70,7 +70,8 @@ class Parser {
         if(refs_.size()>limits_.dependencies) fail(ErrorCode::Limit,"Formula dependency limit");
     }
     CellCoord coordinate(const std::string& s) {
-        auto parsed=from_a1(s);
+        std::string plain; for(char c:s) if(c!='$') plain+=c;
+        auto parsed=from_a1(plain);
         if(auto e=std::get_if<CellError>(&parsed)) fail(e->code,e->context);
         return std::get<CellCoord>(parsed);
     }
@@ -216,6 +217,13 @@ class Evaluator {
             }
             if(n.op=="AVERAGE"&&!count) return error(ErrorCode::DivZero,"AVERAGE has no numeric values");
             return finite(n.op=="SUM"?sum:sum/static_cast<double>(count));
+        }
+        if(n.op=="SHEET") {
+            if(!extension_||n.children.size()!=2)return error(ErrorCode::Ref,"Use SHEET(\"Sheet name\",\"A1\")");
+            auto name=eval(n.children[0]),address=eval(n.children[1]);auto ns=std::get_if<std::string>(&name),as=std::get_if<std::string>(&address);
+            if(!ns||!as)return error(ErrorCode::Ref,"SHEET requires two text arguments");
+            auto parsed=from_a1(*as);if(auto c=std::get_if<CellCoord>(&parsed))return extension_->sheet_reference(*ns,*c);
+            return error(ErrorCode::Ref,"Invalid worksheet cell address");
         }
         if(n.op=="LUA") {
             if(!extension_) return error(ErrorCode::Unsupported,"Lua is not enabled for this sheet");
