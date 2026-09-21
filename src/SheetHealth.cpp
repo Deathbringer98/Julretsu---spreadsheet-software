@@ -61,7 +61,7 @@ std::optional<double> text_number(std::string_view text) {
         if(first||group==0||group>3) return std::nullopt;
     }
     for(char c:text) if(c!=',') digits+=c;
-    double n{}; auto [end,e]=std::from_chars(digits.data(),digits.data()+digits.size(),n);
+    double n{}; auto [end,e]=parse_double(digits.data(),digits.data()+digits.size(),n);
     if(e!=std::errc{}||end!=digits.data()+digits.size()||!std::isfinite(n)) return std::nullopt;
     if(negative) n=-n; if(percent) n/=100;
     return n;

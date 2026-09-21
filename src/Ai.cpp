@@ -243,7 +243,7 @@ AiProposal parse_ai_proposal(std::string_view text,const Sheet& sheet,std::size_
         if(!valid_utf8(value)||value.size()>limits.text_bytes) { skip("the value is too long or has unsupported characters."); continue; }
         AiEdit edit; edit.coord=*coord; edit.address=a1(*coord);
         if(kind=="number") {
-            double n{}; auto [end,e]=std::from_chars(value.data(),value.data()+value.size(),n);
+            double n{}; auto [end,e]=parse_double(value.data(),value.data()+value.size(),n);
             if(value.empty()||e!=std::errc{}||end!=value.data()+value.size()||!std::isfinite(n)) { skip("\""+value+"\" is not a number."); continue; }
             edit.input=n;
         } else if(kind=="boolean") {

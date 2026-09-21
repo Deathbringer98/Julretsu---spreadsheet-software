@@ -177,7 +177,7 @@ Input interpret(std::string_view text) {
     if(text=="TRUE"||text=="true") return true;
     if(text=="FALSE"||text=="false") return false;
     double value{};
-    auto [end,error]=std::from_chars(text.data(),text.data()+text.size(),value);
+    auto [end,error]=parse_double(text.data(),text.data()+text.size(),value);
     if(error==std::errc{}&&end==text.data()+text.size()&&std::isfinite(value)) return value;
     return std::string(text);
 }

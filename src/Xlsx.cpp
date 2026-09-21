@@ -89,7 +89,7 @@ XlsxImport read_xlsx(const std::filesystem::path& path,bool formulas){
                 else if(type=="s"){auto n=index(v.text().as_string());if(n>=strings.size())throw std::runtime_error("Invalid shared string index.");value=strings[n];}
                 else if(type=="b"){std::string b=v.text().as_string();if(b!="0"&&b!="1")throw std::runtime_error("Invalid XLSX Boolean.");value=b=="1";}
                 else if(type=="str"||type=="e"||type=="d")value=std::string(v.text().as_string());
-                else if(v){std::string text=v.text().as_string();double n{};auto[end,e]=std::from_chars(text.data(),text.data()+text.size(),n);if(e!=std::errc{}||end!=text.data()+text.size()||!std::isfinite(n))throw std::runtime_error("Invalid XLSX number.");value=n;if(dates[style])++serials;}
+                else if(v){std::string text=v.text().as_string();double n{};auto[end,e]=parse_double(text.data(),text.data()+text.size(),n);if(e!=std::errc{}||end!=text.data()+text.size()||!std::isfinite(n))throw std::runtime_error("Invalid XLSX number.");value=n;if(dates[style])++serials;}
                 else if(f)value=std::string("[Formula has no cached value]");
             }
             if(auto text=std::get_if<std::string>(&value);text&&!valid_utf8(*text))throw std::runtime_error("Invalid XLSX text.");

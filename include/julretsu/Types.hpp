@@ -1,4 +1,5 @@
 #pragma once
+#include <charconv>
 #include <compare>
 #include <cstddef>
 #include <cstdint>
@@ -39,6 +40,9 @@ using CoordResult = std::variant<CellCoord, CellError>;
 [[nodiscard]] std::variant<std::string, CellError> to_a1(CellCoord coord);
 [[nodiscard]] std::string_view error_display(ErrorCode code) noexcept;
 [[nodiscard]] std::string display(const Value& value);
+// Decimal parsing with std::from_chars semantics (no locale, no leading space or '+'), also on
+// standard libraries that lack floating-point from_chars, such as Apple's.
+std::from_chars_result parse_double(const char* first,const char* last,double& value) noexcept;
 struct Limits {
     std::size_t formula_bytes = 8192;
     std::size_t parse_depth = 64;

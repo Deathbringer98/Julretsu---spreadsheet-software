@@ -24,7 +24,7 @@ StreamResult CsvAdapter::import_sheet(std::istream& in,Sheet& sheet,const Stream
         if(!field.empty()) {
             Input value=field;
             if(options.interpretation==ImportInterpretation::Values) {
-                double n{};auto [end,error]=std::from_chars(field.data(),field.data()+field.size(),n);
+                double n{};auto [end,error]=parse_double(field.data(),field.data()+field.size(),n);
                 if(error==std::errc{}&&end==field.data()+field.size()&&std::isfinite(n))value=n;
                 else if(field=="TRUE"||field=="FALSE")value=field=="TRUE";
             } else if(options.interpretation==ImportInterpretation::NativeFormulas&&field.front()=='=') {

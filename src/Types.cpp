@@ -2,7 +2,36 @@
 #include <algorithm>
 #include <charconv>
 #include <sstream>
+#ifdef __APPLE__
+#include <cctype>
+#include <cerrno>
+#include <cmath>
+#include <cstring>
+#include <xlocale.h>
+#endif
 namespace julretsu {
+std::from_chars_result parse_double(const char* first,const char* last,double& value) noexcept {
+#ifndef __APPLE__
+    return std::from_chars(first,last,value);
+#else
+    const std::from_chars_result invalid{first,std::errc::invalid_argument};
+    if(first==last||*first=='+'||std::isspace(static_cast<unsigned char>(*first))) return invalid;
+    // Copy the characters a number (or inf/nan) can contain, then parse them in the C locale.
+    char buffer[400]; std::size_t length=0;
+    while(first+length<last&&length<sizeof buffer-1) {
+        const char c=first[length];
+        if(c=='\0'||!(std::isdigit(static_cast<unsigned char>(c))||c=='-'||c=='+'||c=='.'||c=='e'||c=='E'||std::strchr("infatyINFATY",c))) break;
+        buffer[length++]=c;
+    }
+    buffer[length]=0;
+    static const locale_t c_locale=newlocale(LC_ALL_MASK,"C",nullptr);
+    char* end=nullptr; errno=0;
+    const double parsed=strtod_l(buffer,&end,c_locale);
+    if(end==buffer) return invalid;
+    if(errno==ERANGE&&std::isinf(parsed)) return {first+(end-buffer),std::errc::result_out_of_range};
+    value=parsed; return {first+(end-buffer),std::errc{}};
+#endif
+}
 CoordResult from_a1(std::string_view s) {
     auto invalid = [] { return CellError{ErrorCode::Ref, "Invalid or out-of-bounds A1 reference", {}}; };
     if(s.empty()) return invalid();

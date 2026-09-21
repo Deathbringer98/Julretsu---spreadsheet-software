@@ -1,4 +1,5 @@
 #include "julretsu/Json.hpp"
+#include "julretsu/Types.hpp"
 #include <array>
 #include <charconv>
 #include <cmath>
@@ -74,7 +75,7 @@ struct Parser {
         if(word("false")) return false;
         if(word("null")) return nullptr;
         std::size_t end=at; while(end<text.size()&&std::string_view("+-.0123456789eE").find(text[end])!=std::string_view::npos) ++end;
-        double n{}; auto [stop,e]=std::from_chars(text.data()+at,text.data()+end,n);
+        double n{}; auto [stop,e]=parse_double(text.data()+at,text.data()+end,n);
         if(end==at||e!=std::errc{}||stop!=text.data()+end||!std::isfinite(n)) fail("bad number");
         at=end; return n;
     }

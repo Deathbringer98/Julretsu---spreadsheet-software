@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Julretsu 1.0.0 User Manual</title>
+<style>
+  @page { size: Letter; margin: 0.75in 0.8in 0.8in 0.8in; }
+  :root { --green: #155E4B; --green-soft: #E2F1EB; --ink: #1E2A33; --muted: #5B6770; --line: #D6E0E2; --amber: #B26A00; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.5; margin: 0; }
+  h1, h2, h3 { color: var(--green); line-height: 1.2; }
+  h2 { font-size: 20pt; margin: 0 0 10pt; padding-bottom: 6pt; border-bottom: 2px solid var(--green-soft); break-before: page; }
+  h3 { font-size: 13pt; margin: 18pt 0 6pt; }
+  p { margin: 0 0 8pt; }
+  ul, ol { margin: 0 0 8pt 0; padding-left: 18pt; }
+  li { margin-bottom: 3pt; }
+  code, kbd { font-family: Consolas, "Courier New", monospace; font-size: 9.5pt; }
+  kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; background: #F6F9F9; white-space: nowrap; }
+  code { background: #F1F5F5; padding: 0 3px; border-radius: 3px; }
+  figure { margin: 10pt 0 14pt; break-inside: avoid; }
+  figure img { width: 100%; border: 1px solid var(--line); border-radius: 6px; display: block; }
+  figure.small img { width: 62%; margin: 0 auto; }
+  figcaption { color: var(--muted); font-size: 9pt; margin-top: 4pt; text-align: center; }
+  table { width: 100%; border-collapse: collapse; margin: 6pt 0 12pt; break-inside: avoid; font-size: 9.8pt; }
+  th, td { text-align: left; padding: 5pt 7pt; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--green-soft); color: var(--green); font-weight: 600; }
+  .tip, .note, .warn { border-radius: 6px; padding: 8pt 11pt; margin: 8pt 0 12pt; break-inside: avoid; }
+  .tip { background: var(--green-soft); }
+  .note { background: #F1F5F7; }
+  .warn { background: #FFF4E0; }
+  .tip b:first-child, .note b:first-child, .warn b:first-child { color: var(--green); }
+  .warn b:first-child { color: var(--amber); }
+  .cover { height: 9.2in; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
+  .cover img { width: 120px; margin-bottom: 26pt; }
+  .cover h1 { font-size: 40pt; margin: 0; }
+  .cover .subtitle { font-size: 16pt; color: var(--muted); margin-top: 6pt; }
+  .cover .edition { margin-top: 40pt; font-size: 11pt; color: var(--muted); }
+  .toc { columns: 2; column-gap: 28pt; }
+  .toc ol { padding-left: 16pt; }
+  .toc li { margin-bottom: 5pt; break-inside: avoid; }
+  .callouts { position: relative; }
+  .callouts img { width: 100%; border: 1px solid var(--line); border-radius: 6px; display: block; }
+  .callouts span { position: absolute; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: #D93A2B; color: white;
+                   font-size: 9pt; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,.35); }
+  .steps li { margin-bottom: 6pt; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14pt; }
+  .two figure { margin: 4pt 0 10pt; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <img src="../../assets/app-icon.png" alt="Julretsu icon">
+  <h1>Julretsu</h1>
+  <div class="subtitle">User Manual</div>
+  <div class="subtitle">The spreadsheet that catches your mistakes before they cost you.</div>
+  <div class="edition">Version 1.0.0<br>Circuitspecter Studio<br>Copyright (c) 2026 Matthew Menchinton &amp; Circuitspecter Studio</div>
+</section>
+
+<h2 style="break-before: page">Contents</h2>
+<div class="toc">
+<ol>
+  <li>Welcome to Julretsu</li>
+  <li>Installing Julretsu</li>
+  <li>A tour of the window</li>
+  <li>Entering and editing data</li>
+  <li>Formulas</li>
+  <li>Formatting your sheet</li>
+  <li>Rows, columns, sorting and filtering</li>
+  <li>Working with several worksheets</li>
+  <li>Saving, opening and recovery</li>
+  <li>CSV and Excel files</li>
+  <li>The safety net</li>
+  <li>Charts, printing and PDF</li>
+  <li>Lua macros</li>
+  <li>The AI assistant (optional)</li>
+  <li>Views, themes and the workbook window</li>
+  <li>Keyboard shortcuts</li>
+  <li>Troubleshooting</li>
+  <li>Uninstalling Julretsu</li>
+  <li>License and contact</li>
+</ol>
+</div>
+
+<h2>1. Welcome to Julretsu</h2>
+<p>Julretsu is a desktop spreadsheet for Windows, macOS and Linux. It works like the spreadsheets you already know: a grid of cells, formulas that recalculate as you type, formatting, sorting, charts and printing. Your workbooks stay on your own computer.</p>
+<p>What makes Julretsu different is its <b>safety net</b>. Spreadsheet mistakes such as a mistyped amount, a total that skips a row or a paste that lands one row off cost businesses real money every year. Julretsu watches for these as you work, explains what looks wrong in plain language, offers one click fixes, and keeps a history of every change so you can always see who changed what and when.</p>
+<h3>What you can do with Julretsu</h3>
+<ul>
+  <li>Build budgets, price lists, schedules and reports on sheets of up to 1,000,000 rows and 16,384 columns.</li>
+  <li>Use formulas such as <code>SUM</code>, <code>AVERAGE</code> and <code>IF</code>, and link one worksheet to another.</li>
+  <li>Format cells with fonts, colours, borders, currency, percentages and dates.</li>
+  <li>Open and save CSV files and Microsoft Excel <code>.xlsx</code> workbooks.</li>
+  <li>Turn a selection into a bar or line chart, print it, or save it as a PDF.</li>
+  <li>Automate repetitive edits with small Lua macros.</li>
+  <li>Optionally ask an AI model to propose edits, which you review before anything changes.</li>
+</ul>
+<div class="tip"><b>Tip.</b> Julretsu opens with an example project budget. Every screenshot in this manual uses that example, so you can follow along.</div>
+
+<h2>2. Installing Julretsu</h2>
+<p>Download the installer for your computer from the Julretsu website. Julretsu 1.0.0 comes in these packages:</p>
+<table>
+  <tr><th>Computer</th><th>File</th><th>Requirements</th></tr>
+  <tr><td>Windows</td><td><code>Julretsu-1.0.0-Windows-Setup.exe</code></td><td>Windows 10 or 11 (64 bit), graphics that support OpenGL 3.3</td></tr>
+  <tr><td>Mac</td><td><code>Julretsu-1.0.0-macOS.dmg</code></td><td>macOS 13.3 Ventura or later, Apple silicon or Intel</td></tr>
+  <tr><td>Linux (Ubuntu, Debian, Mint)</td><td><code>Julretsu-1.0.0-linux-amd64.deb</code></td><td>64 bit Intel or AMD, a desktop with X11 or XWayland</td></tr>
+  <tr><td>Linux (any distribution)</td><td><code>Julretsu-1.0.0-linux-x86_64.tar.gz</code></td><td>Same as above; no installation needed</td></tr>
+</table>
+
+<h3>Windows</h3>
+<ol class="steps">
+  <li>Double-click <b>Julretsu-1.0.0-Windows-Setup.exe</b>.</li>
+  <li>Read the license, tick <b>I accept the Julretsu Software License</b>, and click <b>Next</b>.</li>
+  <li>Choose where to install Julretsu. The suggested folder is inside your own user folder, so you do not need administrator permission.</li>
+  <li>Choose your options: a Start menu entry, a desktop shortcut, and whether Julretsu should open <code>.julretsu</code> workbooks when you double-click them.</li>
+  <li>Click <b>Install</b>. When it finishes, leave <b>Start Julretsu now</b> ticked and click <b>Finish</b>.</li>
+</ol>
+<div class="two">
+  <figure><img src="images/setup-license.png" alt="License page"><figcaption>Step 2: the license agreement</figcaption></figure>
+  <figure><img src="images/setup-options.png" alt="Options page"><figcaption>Steps 3 and 4: install options</figcaption></figure>
+</div>
+<div class="warn"><b>If Windows shows "Windows protected your PC".</b> This message appears for new programs that Windows has not seen many times yet. Click <b>More info</b>, check that the publisher and file name are what you expect, then click <b>Run anyway</b>.</div>
+
+<h3>Mac</h3>
+<ol class="steps">
+  <li>Double-click <b>Julretsu-1.0.0-macOS.dmg</b> to open it.</li>
+  <li>Drag <b>Julretsu</b> onto the <b>Applications</b> folder shown in the same window.</li>
+  <li>Open your Applications folder and start Julretsu.</li>
+</ol>
+<div class="warn"><b>If macOS says it cannot check the app for malicious software.</b> The first time, Control-click (or right-click) Julretsu in Applications and choose <b>Open</b>, then click <b>Open</b> again. You can also go to <b>System Settings, Privacy &amp; Security</b> and click <b>Open Anyway</b>. You only need to do this once.</div>
+
+<h3>Linux</h3>
+<p><b>Ubuntu, Debian, Linux Mint and similar:</b> double-click the <code>.deb</code> file to install it with your software centre, or run this command in the folder where you downloaded it:</p>
+<p><code>sudo apt install ./Julretsu-1.0.0-linux-amd64.deb</code></p>
+<p>Julretsu then appears in your applications menu, and <code>.julretsu</code> files open in Julretsu.</p>
+<p><b>Other distributions:</b> extract the <code>.tar.gz</code> file anywhere you like and run <code>bin/julretsu</code> inside the extracted folder.</p>
+<div class="note"><b>Note.</b> On Linux, Julretsu uses the desktop's own file dialogs. If you see a message asking for zenity or kdialog, install one of them, for example <code>sudo apt install zenity</code>.</div>
+
+<h2>3. A tour of the window</h2>
+<figure>
+  <div class="callouts">
+  <img src="images/overview.png" alt="The Julretsu window">
+  <span style="left:11%;top:1.8%">1</span>
+  <span style="left:27.4%;top:1.8%">2</span>
+  <span style="left:95.6%;top:1.8%">3</span>
+  <span style="left:19%;top:6.4%">4</span>
+  <span style="left:58%;top:6.4%">5</span>
+  <span style="left:22%;top:11.4%">6</span>
+  <span style="left:92.8%;top:11.1%">7</span>
+  <span style="left:50%;top:21%">8</span>
+  <span style="left:56%;top:28.2%">9</span>
+  <span style="left:6%;top:43%">10</span>
+  <span style="left:56%;top:57%">11</span>
+  <span style="left:16.6%;top:92.8%">12</span>
+  <span style="left:14%;top:98.4%">13</span>
+  </div>
+  <figcaption>The main window with the example budget</figcaption>
+</figure>
+<table>
+  <tr><th>#</th><th>Part</th><th>What it does</th></tr>
+  <tr><td>1</td><td>Menus</td><td>Edit, Data, Format, Reports, Workbook and View menus with every command.</td></tr>
+  <tr><td>2</td><td>Quick access</td><td>Save, Undo and Redo, always one click away.</td></tr>
+  <tr><td>3</td><td>Window buttons</td><td>Minimize, maximize and close Julretsu. Drag any empty part of the top two rows to move the window.</td></tr>
+  <tr><td>4</td><td>Workbook name</td><td>The file you are working on and whether it has unsaved changes.</td></tr>
+  <tr><td>5</td><td>Go to cell</td><td>Type an address such as <code>C4</code> and press <kbd>Enter</kbd> to jump there (<kbd>Ctrl</kbd>+<kbd>K</kbd>).</td></tr>
+  <tr><td>6</td><td>File and ribbon tabs</td><td>File opens the file menu. The tabs switch the ribbon: Home, Format, Formulas, Review, View and Help.</td></tr>
+  <tr><td>7</td><td>Workbook buttons</td><td>Collapse the ribbon, open help, and minimize, restore or close the workbook.</td></tr>
+  <tr><td>8</td><td>Ribbon</td><td>The most used commands for the selected tab, grouped like other office programs.</td></tr>
+  <tr><td>9</td><td>Formula bar</td><td>Shows the address and the exact contents of the selected cell. Edit here and press <kbd>Enter</kbd> or click <b>Apply</b>.</td></tr>
+  <tr><td>10</td><td>Navigation</td><td>Sheets, templates, the Lua workspace, the AI assistant and settings.</td></tr>
+  <tr><td>11</td><td>Grid</td><td>Your cells. The active cell has a green outline and a small fill handle in its corner.</td></tr>
+  <tr><td>12</td><td>Sheet button and totals</td><td>Switch worksheets. The count, sum and average of the selected cells appear beside it.</td></tr>
+  <tr><td>13</td><td>Status bar</td><td>Number of filled cells, the <b>Sheet check</b> badge, messages, and the zoom slider.</td></tr>
+</table>
+
+<h2>4. Entering and editing data</h2>
+<h3>Selecting cells</h3>
+<ul>
+  <li>Click a cell to select it. Use the arrow keys, <kbd>Tab</kbd>, <kbd>Page Up</kbd> and <kbd>Page Down</kbd> to move.</li>
+  <li><kbd>Shift</kbd>+click another cell to select the rectangle between them.</li>
+  <li>Click a row number to select the whole row. <kbd>Ctrl</kbd>+click adds or removes rows, and <kbd>Shift</kbd>+click selects a run of rows.</li>
+  <li><kbd>Ctrl</kbd>+<kbd>Home</kbd> jumps to A1. Edit, then <b>Select used range</b> selects everything that holds data.</li>
+</ul>
+<h3>Typing and changing values</h3>
+<ol class="steps">
+  <li>Double-click a cell or press <kbd>F2</kbd>, or click in the formula bar.</li>
+  <li>Type a number, text, <code>TRUE</code> or <code>FALSE</code>, or a formula that starts with <code>=</code>.</li>
+  <li>Press <kbd>Enter</kbd> to keep the change, or <kbd>Esc</kbd> to cancel it.</li>
+</ol>
+<div class="tip"><b>Tip.</b> To store text that starts with <code>=</code> or looks like a number, start it with an apostrophe. For example <code>'=hello</code> or <code>'00123</code> are kept exactly as typed.</div>
+<p>Long text stays inside its own cell and ends with "...". Hover over the cell, or look at the formula bar, to read all of it. A number that is too wide for its cell shows <code>###</code> so it can never be misread; zoom in, or read it in the formula bar.</p>
+<h3>Undo and redo</h3>
+<p>Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to undo and <kbd>Ctrl</kbd>+<kbd>Y</kbd> to redo, or use the quick access buttons. A paste, a sort or a macro is undone in one step.</p>
+<h3>Copy, cut and paste</h3>
+<ul>
+  <li><kbd>Ctrl</kbd>+<kbd>C</kbd> copies, <kbd>Ctrl</kbd>+<kbd>X</kbd> cuts and <kbd>Ctrl</kbd>+<kbd>V</kbd> pastes. You can copy up to 10,000 cells at a time.</li>
+  <li><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> pastes values only, without formulas or formatting.</li>
+  <li>Copying inside Julretsu keeps formulas and formatting. Relative references move with the paste, while references with <code>$</code> stay fixed.</li>
+  <li>You can paste text copied from other programs, such as rows from a web page or another spreadsheet.</li>
+</ul>
+<h3>Filling a series</h3>
+<p>Drag the small square at the corner of your selection down or to the right. Formulas are copied with their references adjusted. If you start with two numbers, such as 5 and 10, Julretsu continues the series: 15, 20, 25 and so on. You can also use <b>Home, Editing, Fill</b> to fill down or right.</p>
+<h3>Finding things</h3>
+<p>Press <kbd>Ctrl</kbd>+<kbd>F</kbd> to search values and formulas on the current sheet. Click <b>Find next</b> to move through the matches.</p>
+
+<h2>5. Formulas</h2>
+<p>A formula starts with <code>=</code> and recalculates automatically whenever a cell it uses changes. For example, in the budget, cell E4 holds <code>=C4*D4</code>: quantity times unit cost.</p>
+<h3>Building blocks</h3>
+<table>
+  <tr><th>You can use</th><th>Examples</th></tr>
+  <tr><td>Numbers, text in quotes, TRUE and FALSE</td><td><code>=42</code>, <code>="Paid"</code>, <code>=TRUE</code></td></tr>
+  <tr><td>Cell references and ranges</td><td><code>=B2</code>, <code>=SUM(B2:B9)</code>, <code>=SUM(A1:C3)</code></td></tr>
+  <tr><td>Arithmetic</td><td><code>+ - * /</code> and brackets, as in <code>=(B2+B3)*1.2</code></td></tr>
+  <tr><td>Comparisons</td><td><code>= &lt;&gt; &lt; &lt;= &gt; &gt;=</code>, as in <code>=B2&gt;100</code></td></tr>
+</table>
+<h3>Functions</h3>
+<table>
+  <tr><th>Function</th><th>What it does</th><th>Example</th></tr>
+  <tr><td><code>SUM</code></td><td>Adds numbers. Text and empty cells are ignored.</td><td><code>=SUM(E4:E9)</code></td></tr>
+  <tr><td><code>AVERAGE</code></td><td>Average of the numbers in a range.</td><td><code>=AVERAGE(D4:D9)</code></td></tr>
+  <tr><td><code>IF</code></td><td>Chooses between two results. It always takes three parts: a test, the result when true, and the result when false.</td><td><code>=IF(E4&gt;1000,"Review","OK")</code></td></tr>
+  <tr><td><code>SHEET</code></td><td>Reads a cell on another worksheet.</td><td><code>=SHEET("Budget","E11")</code></td></tr>
+  <tr><td><code>LUA</code></td><td>Runs a short Lua calculation.</td><td><code>=LUA("return cell('E11') * 1.05")</code></td></tr>
+</table>
+<p>The quickest way to total a column is to select it and choose <b>Home, Editing, AutoSum, Sum</b>. Julretsu adds a <code>SUM</code> formula directly below your selection.</p>
+<h3>When a formula shows an error</h3>
+<table>
+  <tr><th>Shows</th><th>Meaning</th></tr>
+  <tr><td><code>#DIV/0!</code></td><td>A division by zero, or an average of no numbers.</td></tr>
+  <tr><td><code>#VALUE!</code></td><td>Text was used where a number was needed.</td></tr>
+  <tr><td><code>#REF!</code></td><td>A reference points outside the sheet.</td></tr>
+  <tr><td><code>#NAME?</code></td><td>An unknown function name.</td></tr>
+  <tr><td><code>#CYCLE!</code></td><td>A formula depends on itself, directly or through other cells.</td></tr>
+  <tr><td><code>#NUM!</code></td><td>A result too large to represent.</td></tr>
+  <tr><td><code>#PARSE!</code></td><td>The formula could not be read. Check brackets and quotes.</td></tr>
+</table>
+<div class="tip"><b>Tip.</b> Turn on <b>View, Show formulas</b> to see every formula in the grid instead of its result.</div>
+
+<h2>6. Formatting your sheet</h2>
+<p>The <b>Home</b> ribbon holds the everyday formatting tools. They apply to the selected cells. If you selected whole rows by clicking their row numbers, they format those rows instead.</p>
+<table>
+  <tr><th>Group</th><th>Tools</th></tr>
+  <tr><td>Clipboard</td><td>Paste (or paste values), Cut and Copy.</td></tr>
+  <tr><td>Font</td><td>Font, size, bigger and smaller text, bold, borders, fill colour and font colour.</td></tr>
+  <tr><td>Alignment</td><td>Left, centre, right, or Automatic (numbers right, text left).</td></tr>
+  <tr><td>Number</td><td>General, Number, Currency, Percentage, Date and Comma formats, plus fewer or more decimal places.</td></tr>
+  <tr><td>Styles</td><td>Ready made cell styles such as Good, Bad, Neutral, Title, Heading, Total, Input and Note, and table styles with a header row and banded rows.</td></tr>
+  <tr><td>Cells</td><td>Insert and delete rows, columns and worksheets, and open Format cells.</td></tr>
+  <tr><td>Editing</td><td>AutoSum, Fill, Clear, Sort &amp; Filter, and Find &amp; Select.</td></tr>
+</table>
+<h3>The Format cells dialog</h3>
+<p>For full control, choose <b>Format, Format selected cells</b> (or <b>Cells, Format, Format cells</b>). You can set the font family (sans serif, serif or monospace), size, bold, borders, alignment, number format, decimal places, and text and fill colours.</p>
+<figure><img src="images/format-cells.png" alt="Format cells dialog"><figcaption>Format cells: every formatting option in one place</figcaption></figure>
+<h3>Number formats</h3>
+<table>
+  <tr><th>Format</th><th>1234.5 appears as</th></tr>
+  <tr><td>General</td><td>1234.5</td></tr>
+  <tr><td>Number (2 decimals)</td><td>1234.50</td></tr>
+  <tr><td>Currency</td><td>$1,234.50</td></tr>
+  <tr><td>Comma</td><td>1,234.50</td></tr>
+  <tr><td>Percentage (0.25 with 0 decimals)</td><td>25%</td></tr>
+  <tr><td>Date</td><td>Excel style date serial numbers shown as a date, for example 2026-09-20</td></tr>
+</table>
+<h3>Formatting whole rows</h3>
+<p>The <b>Format</b> tab has quick tools for entire rows: bold rows, a green fill, fewer or more decimals, and reset. They are handy for header and total rows.</p>
+<h3>Formatting a table in one click</h3>
+<p>Select your table including its header row, then choose <b>Home, Styles, Table style</b> and a colour. Julretsu makes the header bold and coloured, adds borders, and shades every other row.</p>
+
+<h2>7. Rows, columns, sorting and filtering</h2>
+<h3>Inserting and deleting</h3>
+<p>Select a cell, then use <b>Home, Cells, Insert</b> or <b>Delete</b> (also on the <b>Data</b> menu). Rows are inserted above the selected cell and columns before it. Formulas elsewhere are updated so they still point at the right cells.</p>
+<div class="note"><b>Note.</b> Julretsu will not delete a row or column that other formulas depend on, because that would silently break them. It also asks you to remove <code>SHEET</code> and <code>LUA</code> references before inserting or deleting, since those cannot be adjusted automatically.</div>
+<h3>Sorting</h3>
+<ol class="steps">
+  <li>Select the rows to sort, including every column that belongs to them. Leave the header row out.</li>
+  <li>Click a cell in the column to sort by, so it becomes the active cell.</li>
+  <li>Choose <b>Home, Editing, Sort &amp; Filter</b>, then <b>Sort A to Z</b> or <b>Sort Z to A</b>.</li>
+</ol>
+<div class="tip"><b>Safety net.</b> If columns beside your selection hold data in the same rows, Julretsu warns you straight away, because sorting only part of a table mixes up rows. Choose <b>Undo change</b> and select the whole table.</div>
+<h3>Filtering</h3>
+<p>Click a cell in the column you want to filter, then choose <b>Data, Filter active column</b>. Type the text to look for. Only rows containing that text stay visible (capital letters must match), and row 1 always stays visible as your header. Choose <b>Data, Clear filter</b> to show everything again. Filtering never deletes data. To protect hidden rows, clear the filter before sorting, pasting or deleting.</p>
+<h3>Freezing headings</h3>
+<p>On the <b>View</b> menu choose <b>Freeze first row</b>, <b>Freeze first column</b>, or both, so your headings stay in view while you scroll.</p>
+
+<h2>8. Working with several worksheets</h2>
+<p>A workbook can hold up to 64 worksheets. Click the sheet button at the bottom left of the grid to switch sheets, or choose <b>Workbook, Manage sheets</b> to add, duplicate, rename, reorder or delete them.</p>
+<p>To use a value from another sheet, use <code>SHEET</code> with the sheet name and cell address in quotes, for example <code>=SHEET("Q1 Sales","B12")</code>. If you rename a sheet, update the name inside your formulas as well.</p>
+<div class="warn"><b>Careful.</b> Deleting a worksheet removes all of its contents and cannot be undone. Julretsu asks you to confirm first.</div>
+
+<h2>9. Saving, opening and recovery</h2>
+<h3>Julretsu workbooks</h3>
+<p>Save with <kbd>Ctrl</kbd>+<kbd>S</kbd>, the quick access Save button, or <b>File, Save</b>. The first time, choose a folder and a name. Use <b>File, Save As</b> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>) to save a separate copy. Open workbooks with <kbd>Ctrl</kbd>+<kbd>O</kbd>, or double-click a <code>.julretsu</code> file.</p>
+<p>A <code>.julretsu</code> file keeps everything: values, formulas, formatting, all worksheets, your Lua script and the change history. Julretsu always asks before closing or replacing a workbook with unsaved changes.</p>
+<figure class="small"><img src="images/file-menu.png" alt="File menu"><figcaption>The File menu</figcaption></figure>
+<h3>Automatic recovery</h3>
+<p>After a minute of unsaved work, Julretsu quietly keeps a recovery copy and refreshes it every minute. If Julretsu or your computer closes unexpectedly, the next time you start Julretsu it offers to restore that copy. Choose <b>Restore</b>, then save the workbook with <b>Save As</b>. The recovery copy is removed whenever you save or close Julretsu normally. You can turn it off, or open it manually, from the <b>Workbook</b> menu.</p>
+
+<h2>10. CSV and Excel files</h2>
+<h3>CSV files</h3>
+<p>Use <b>File, Import CSV</b> and <b>File, Export CSV</b>. Julretsu reads and writes UTF-8 CSV files, including values that contain commas, quotes or several lines. When importing, numbers and TRUE or FALSE are recognised and everything else becomes text. Formulas in a CSV file are never run.</p>
+<p>Exported CSV files contain calculated values. Text that starts with <code>=</code>, <code>+</code>, <code>-</code> or <code>@</code> is protected with a leading apostrophe, so another spreadsheet program will not run it as a formula.</p>
+<h3>Excel workbooks</h3>
+<p><b>File, Import Excel</b> reads the first worksheet of an <code>.xlsx</code> file. Choose <b>cached values</b> to bring in the results Excel last calculated, or <b>supported formulas</b> to keep arithmetic, comparisons, <code>SUM</code>, <code>AVERAGE</code> and <code>IF</code> as live formulas. Before anything loads, Julretsu shows exactly what will and will not come across.</p>
+<p><b>File, Export Excel</b> saves the current worksheet as an <code>.xlsx</code> file with its supported formulas, bold text, colours and decimal row formats.</p>
+<div class="note"><b>Note.</b> Excel features such as merged cells, charts, column widths, comments and other worksheets are not imported or exported. Keep a <code>.julretsu</code> copy of your work for full fidelity.</div>
+
+<h2>11. The safety net</h2>
+<p>Julretsu looks out for the everyday mistakes behind costly spreadsheet errors. It never blocks you; it explains what looks wrong and lets you decide.</p>
+<h3>Review before keeping risky changes</h3>
+<p>After a large paste, fill, clear or macro, after deleting a row or column that held data, after a sort that left neighbouring columns behind, or when formulas are overwritten, Julretsu shows <b>Review this change</b>. The change is already visible in your sheet and the dialog lists every affected cell with its old and new value.</p>
+<ul>
+  <li><b>Keep change</b> (<kbd>Enter</kbd>) accepts it.</li>
+  <li><b>Undo change</b> (<kbd>Esc</kbd>) puts everything back exactly as it was.</li>
+</ul>
+<figure><img src="images/review.png" alt="Review this change"><figcaption>Review this change after a large paste</figcaption></figure>
+<p>On the <b>Review</b> tab you can choose how many cells a change must touch before Julretsu asks, or turn reviews off. Partial sorts, deleted data, replaced formulas and out of scale numbers are always reviewed.</p>
+<figure><img src="images/review-tab.png" alt="Review tab"><figcaption>The Review tab</figcaption></figure>
+<h3>Instant typo check</h3>
+<p>If you type a number far larger or smaller than the rest of its column, for example 4500000 in a column of amounts around 450, the status bar warns you right away. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> if it was a slip.</p>
+<h3>Sheet check</h3>
+<p>The <b>Sheet check</b> badge in the status bar always shows whether your sheet has problems. Click it, or choose <b>Review, Check sheet</b>, to open the panel. Julretsu looks for:</p>
+<ul>
+  <li>a typed number, or a different formula, inside a column of matching formulas;</li>
+  <li><code>SUM</code> or <code>AVERAGE</code> ranges that stop short of neighbouring numbers;</li>
+  <li>numbers wildly out of scale with the rest of their column;</li>
+  <li>numbers stored as text, which totals silently skip;</li>
+  <li>blank rows that split a table and break sorting and filtering.</li>
+</ul>
+<p>Each problem has <b>Go to</b>, a one click fix when a safe fix exists, and <b>Ignore</b>. Red dots mark problems likely to give wrong results. Every fix can be undone.</p>
+<figure><img src="images/sheet-check.png" alt="Sheet check panel"><figcaption>Sheet check found a typed value in the Total column and a total that skips a row</figcaption></figure>
+<h3>Cell history and the change log</h3>
+<p>Right-click a cell and choose <b>Cell history</b>, or use <b>Review, Cell history</b>, to see every change to that cell: when it happened, what caused it, and the value before and after. <b>Review, Change log</b> lists every change on the sheet.</p>
+<figure><img src="images/cell-history.png" alt="Cell history"><figcaption>The history of a single cell</figcaption></figure>
+<p>History is saved inside the <code>.julretsu</code> file, so it travels with the workbook. Julretsu keeps the latest 1,000 changes, and very large changes list their first 200 cells. If you share a file and prefer not to include its history, open the change log and choose <b>Clear history</b>.</p>
+
+<h2>12. Charts, printing and PDF</h2>
+<ol class="steps">
+  <li>Select the cells you want in your report, with the column to chart as the active column.</li>
+  <li>Choose <b>Reports, Chart / print selected range</b>.</li>
+  <li>Give the report a title, and choose a bar or line chart, portrait or landscape, and whether to repeat the first row on every page.</li>
+  <li>Click <b>Print / Save table as PDF</b>. To make a PDF on Windows, choose <b>Microsoft Print to PDF</b> as the printer.</li>
+</ol>
+<figure><img src="images/chart-report.png" alt="Chart and print preview"><figcaption>Chart and print preview</figcaption></figure>
+<div class="note"><b>Note.</b> A report can include up to 12 columns and 10,000 cells, and the chart uses up to 1,000 numbers. Reports are snapshots and are not saved in the workbook. Printing is currently available in the Windows version.</div>
+
+<h2>13. Lua macros</h2>
+<p>Lua macros automate repetitive edits. Open the <b>Lua workspace</b> from the navigation bar or <b>Home, Assist, Lua scripts</b>.</p>
+<ul>
+  <li><code>cell('A1')</code> reads a cell as it was before the macro started.</li>
+  <li><code>set('A1', value)</code> queues a change.</li>
+  <li>Click <b>Run macro</b>. All changes are applied together, and <b>Undo macro</b> reverts them in one step.</li>
+</ul>
+<p>This example adds 1 to every quantity in the budget:</p>
+<p><code>for row = 4, 9 do set('C' .. row, cell('C' .. row) + 1) end</code></p>
+<figure><img src="images/lua.png" alt="Lua workspace"><figcaption>The Lua workspace</figcaption></figure>
+<div class="note"><b>Note.</b> Macros run in a safe sandbox with no access to your files, the network or the rest of your computer, and with limits on time and memory. A macro that fails leaves your sheet unchanged. The script is saved with the workbook but never runs by itself.</div>
+
+<h2>14. The AI assistant (optional)</h2>
+<p>Julretsu works fully offline. If you want, you can connect your own AI provider and ask for changes in plain language, such as "add a 10% contingency row under the total".</p>
+<ol class="steps">
+  <li>Open <b>AI assistant</b> from the navigation bar or <b>Home, Assist, Ask AI</b>.</li>
+  <li>Under <b>Connection</b>, choose <b>Anthropic (Claude)</b> or an <b>OpenAI compatible</b> server such as OpenAI, Ollama or LM Studio, enter the model name, and save your API key.</li>
+  <li>Describe the change and click <b>Propose edits</b>.</li>
+  <li>Review each proposed edit with its before and after values, untick anything you do not want, and click <b>Apply</b>.</li>
+</ol>
+<figure><img src="images/ai-assistant.png" alt="AI assistant"><figcaption>The AI assistant panel</figcaption></figure>
+<ul>
+  <li>Your API key is stored by Windows Credential Manager for your user account, never in workbooks or settings files.</li>
+  <li>The panel tells you how many cells will be sent and to which server before you send anything. At most 2,000 filled cells are sent.</li>
+  <li>Edits that contain Lua formulas start unticked. Nothing changes until you click Apply, and one <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the whole proposal.</li>
+  <li>Usage is billed by your provider under your own account.</li>
+</ul>
+<div class="note"><b>Note.</b> AI connections are currently available in the Windows version of Julretsu.</div>
+
+<h2>15. Views, themes and the workbook window</h2>
+<h3>Dark mode</h3>
+<p>Click <b>Dark mode</b> at the top right, or use <b>View, Dark appearance</b>. Julretsu remembers your choice.</p>
+<figure><img src="images/dark-mode.png" alt="Dark mode"><figcaption>Julretsu in dark mode</figcaption></figure>
+<h3>Other view options</h3>
+<ul>
+  <li><b>Zoom</b>: drag the slider at the bottom right, from 75 to 150 percent.</li>
+  <li><b>Gridlines</b> and <b>Show formulas</b>: on the View menu and the View tab.</li>
+  <li><b>Long text spills into empty cells</b>: lets long text run across empty neighbouring cells, as older spreadsheets do.</li>
+  <li><b>Collapse the ribbon</b>: click the arrow beside the ribbon tabs for more room. Click any tab to bring it back.</li>
+</ul>
+<h3>The workbook window buttons</h3>
+<p>The buttons at the right of the ribbon tabs control the workbook itself. <b>Minimize</b> shrinks it to a small bar at the bottom of the window, <b>Restore</b> places it in a window you can move and resize inside Julretsu, and <b>Close</b> closes it (you are asked to save first) and starts a blank workbook.</p>
+<figure><img src="images/workbook-floating.png" alt="Restored workbook window"><figcaption>A restored workbook window inside Julretsu</figcaption></figure>
+
+<h2>16. Keyboard shortcuts</h2>
+<p>On a Mac, use <kbd>Cmd</kbd> wherever this table says <kbd>Ctrl</kbd>.</p>
+<table>
+  <tr><th>Action</th><th>Keys</th></tr>
+  <tr><td>New, open, save, save as</td><td><kbd>Ctrl</kbd>+<kbd>N</kbd>, <kbd>Ctrl</kbd>+<kbd>O</kbd>, <kbd>Ctrl</kbd>+<kbd>S</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></td></tr>
+  <tr><td>Undo, redo</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Y</kbd></td></tr>
+  <tr><td>Copy, cut, paste, paste values</td><td><kbd>Ctrl</kbd>+<kbd>C</kbd>, <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>V</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd></td></tr>
+  <tr><td>Edit the selected cell</td><td><kbd>F2</kbd> or double-click</td></tr>
+  <tr><td>Keep or cancel an edit</td><td><kbd>Enter</kbd>, <kbd>Esc</kbd></td></tr>
+  <tr><td>Clear contents</td><td><kbd>Delete</kbd></td></tr>
+  <tr><td>Move the active cell</td><td>Arrow keys, <kbd>Tab</kbd>, <kbd>Page Up</kbd>, <kbd>Page Down</kbd></td></tr>
+  <tr><td>First cell, last cell</td><td><kbd>Ctrl</kbd>+<kbd>Home</kbd>, <kbd>Ctrl</kbd>+<kbd>End</kbd></td></tr>
+  <tr><td>Go to a cell</td><td><kbd>Ctrl</kbd>+<kbd>K</kbd></td></tr>
+  <tr><td>Find</td><td><kbd>Ctrl</kbd>+<kbd>F</kbd></td></tr>
+  <tr><td>Select a range</td><td><kbd>Shift</kbd>+click</td></tr>
+  <tr><td>Add or remove rows from a selection</td><td><kbd>Ctrl</kbd>+click row numbers</td></tr>
+  <tr><td>Scroll rows, scroll columns</td><td>Mouse wheel, <kbd>Shift</kbd>+mouse wheel</td></tr>
+  <tr><td>Keep or undo a reviewed change</td><td><kbd>Enter</kbd>, <kbd>Esc</kbd></td></tr>
+</table>
+
+<h2>17. Troubleshooting</h2>
+<table>
+  <tr><th>Problem</th><th>What to do</th></tr>
+  <tr><td>Windows says "Windows protected your PC" when installing.</td><td>Click <b>More info</b>, then <b>Run anyway</b>. See chapter 2.</td></tr>
+  <tr><td>macOS says it cannot check Julretsu for malicious software.</td><td>Control-click Julretsu in Applications and choose <b>Open</b>, or use <b>Open Anyway</b> in Privacy &amp; Security.</td></tr>
+  <tr><td>Linux shows a message about zenity or kdialog.</td><td>Install one: <code>sudo apt install zenity</code>. Julretsu uses it for open and save dialogs.</td></tr>
+  <tr><td>Julretsu will not start and mentions OpenGL or graphics.</td><td>Update your graphics driver. Julretsu needs OpenGL 3.3 on Windows and Linux.</td></tr>
+  <tr><td>A cell shows <code>###</code>.</td><td>The number is too wide for the cell. Zoom in, or read it in the formula bar.</td></tr>
+  <tr><td>A formula shows an error code.</td><td>See the error table in chapter 5, and check the Sheet check panel.</td></tr>
+  <tr><td>I cannot sort, paste or delete.</td><td>Clear any active filter first (<b>Data, Clear filter</b>).</td></tr>
+  <tr><td>Inserting a row is refused.</td><td>Remove <code>SHEET</code> or <code>LUA</code> references first; they cannot be adjusted automatically.</td></tr>
+  <tr><td>The recovery prompt appears when I start Julretsu.</td><td>Julretsu closed unexpectedly last time. Choose <b>Restore</b> to get your work back, or <b>Keep current workbook</b> to discard the copy.</td></tr>
+  <tr><td>Double-clicking a <code>.julretsu</code> file does not open Julretsu.</td><td>On Windows, run the installer again and tick <b>Open .julretsu workbooks with Julretsu</b>. On a Mac, open files with <b>File, Open</b>.</td></tr>
+</table>
+
+<h2>18. Uninstalling Julretsu</h2>
+<ul>
+  <li><b>Windows:</b> open <b>Settings, Apps, Installed apps</b>, find Julretsu, and choose <b>Uninstall</b>. You can also use <b>Uninstall Julretsu</b> in the install folder.</li>
+  <li><b>Mac:</b> drag Julretsu from Applications to the Trash.</li>
+  <li><b>Linux (.deb):</b> run <code>sudo apt remove julretsu</code>.</li>
+  <li><b>Linux (.tar.gz):</b> delete the extracted folder.</li>
+</ul>
+<p>Uninstalling never deletes your workbooks. Your appearance preference is stored in your user settings folder and can be deleted by hand if you wish.</p>
+
+<h2>19. License and contact</h2>
+<p>Julretsu is free to use under the Julretsu Software License. You may install and use it for personal, educational and business work, and the workbooks you create belong to you. Julretsu itself remains the property of Matthew Menchinton and Circuitspecter Studio. It is not open source, and you may not sell, redistribute or modify it. The full license is shown in the installer and included as the <code>LICENSE</code> file.</p>
+<p>Julretsu includes third party components, each under its own license, listed in <code>THIRD_PARTY_NOTICES.md</code>: Dear ImGui, GLFW, Lua, sol2, stb, miniz and pugixml.</p>
+<p>For questions or permission requests, contact the owner through <b>github.com/Deathbringer98</b>.</p>
+<p style="margin-top:30pt;color:var(--muted)">Julretsu 1.0.0 User Manual. Copyright (c) 2026 Matthew Menchinton &amp; Circuitspecter Studio. All rights reserved.</p>
+
+</body>
+</html>

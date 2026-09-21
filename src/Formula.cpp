@@ -28,7 +28,7 @@ class Parser {
         char c=source_[pos_];
         if((c>='0'&&c<='9')||c=='.') {
             const char* first=source_.data()+pos_;
-            auto [end,ec]=std::from_chars(first,source_.data()+source_.size(),token_.number);
+            auto [end,ec]=parse_double(first,source_.data()+source_.size(),token_.number);
             if(ec!=std::errc{} || end==first || !std::isfinite(token_.number)) fail(ErrorCode::Num,"Invalid numeric literal");
             pos_=static_cast<std::size_t>(end-source_.data()); token_.kind=TokenKind::Number; return;
         }
