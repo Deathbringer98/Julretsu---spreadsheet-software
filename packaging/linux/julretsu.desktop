@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Julretsu
+GenericName=Spreadsheet
+Comment=Spreadsheet with a built-in safety net for spreadsheet mistakes
+Exec=julretsu --open %f
+Icon=julretsu
+Terminal=false
+Categories=Office;Spreadsheet;
+MimeType=application/x-julretsu;
+StartupWMClass=Julretsu

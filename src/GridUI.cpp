@@ -12,6 +12,8 @@
 #define NOMINMAX
 #include <windows.h>
 #include <commdlg.h>
+#else
+#include <sys/wait.h>
 #endif
 #include <imgui.h>
 #include <algorithm>
@@ -332,6 +334,24 @@ void GridUI::style_selection(Action action) {
     message_=result.accepted?"Row formatting applied.":result.error->context;
 }
 namespace {
+#ifndef _WIN32
+// macOS and Linux have no dialog API in GLFW; use the desktop's own dialogs (AppleScript, zenity or kdialog).
+std::string shell_quote(std::string_view text) {
+    std::string out="'"; for(char c:text) { if(c=='\'') out+="'\\''"; else out+=c; } out+="'"; return out;
+}
+struct CommandResult { int status=-1; std::string output; };
+CommandResult run_command(const std::string& command) {
+    CommandResult result; FILE* pipe=popen(command.c_str(),"r"); if(!pipe) return result;
+    char buffer[4096]; while(std::fgets(buffer,sizeof buffer,pipe)) result.output+=buffer;
+    const int status=pclose(pipe); result.status=WIFEXITED(status)?WEXITSTATUS(status):-1;
+    while(!result.output.empty()&&(result.output.back()=='\n'||result.output.back()=='\r')) result.output.pop_back();
+    return result;
+}
+[[maybe_unused]] bool has_command(const char* name) { return std::system((std::string("command -v ")+name+" >/dev/null 2>&1").c_str())==0; }
+std::string applescript_quote(std::string_view text) {
+    std::string out="\""; for(char c:text) { if(c=='"'||c=='\\') out+='\\'; out+=c; } out+="\""; return out;
+}
+#endif
 std::optional<std::filesystem::path> workbook_dialog(bool save,const std::filesystem::path& current,void* owner,const wchar_t* extension=L"julretsu") {
 #ifdef _WIN32
     std::array<wchar_t,32768> name{};
@@ -346,8 +366,28 @@ std::optional<std::filesystem::path> workbook_dialog(bool save,const std::filesy
     if(CommDlgExtendedError()) throw std::runtime_error("Windows could not open the file dialog. Please try again.");
     return std::nullopt;
 #else
-    (void)save;(void)current;(void)owner;(void)extension;
-    throw std::runtime_error("Native file dialogs are currently supported on Windows.");
+    (void)owner;
+    std::string ext; for(const wchar_t* c=extension;*c;++c) ext+=char(*c);
+    const auto name=current.empty()?std::string("Untitled workbook.")+ext:current.filename().string();
+    const auto folder=current.empty()?std::string():current.parent_path().string();
+    const std::string title=save?"Save workbook":"Open a file";
+    CommandResult chosen;
+#ifdef __APPLE__
+    std::string script=save?"POSIX path of (choose file name with prompt "+applescript_quote(title)+" default name "+applescript_quote(name)+")"
+                           :"POSIX path of (choose file with prompt "+applescript_quote(title)+" of type {"+applescript_quote(ext)+"})";
+    chosen=run_command("osascript -e "+shell_quote(script)+" 2>/dev/null");
+#else
+    const auto start=folder.empty()?name:(std::filesystem::path(folder)/name).string();
+    if(has_command("zenity"))
+        chosen=run_command("zenity --file-selection "+std::string(save?"--save --confirm-overwrite ":"")+"--title="+shell_quote(title)+" --filename="+shell_quote(start)+" --file-filter="+shell_quote("*."+ext)+" 2>/dev/null");
+    else if(has_command("kdialog"))
+        chosen=run_command(std::string(save?"kdialog --getsavefilename ":"kdialog --getopenfilename ")+shell_quote(start)+" "+shell_quote("*."+ext)+" 2>/dev/null");
+    else throw std::runtime_error("Julretsu needs zenity or kdialog to show file dialogs. Install one, for example: sudo apt install zenity");
+#endif
+    if(chosen.status!=0||chosen.output.empty()) return std::nullopt; // cancelled
+    std::filesystem::path path(chosen.output);
+    if(save&&path.extension()!="."+ext) path+="."+ext;
+    return path;
 #endif
 }
 std::string path_label(const std::filesystem::path& path) {
@@ -400,7 +440,25 @@ bool GridUI::confirm_close() {
     if(answer==IDYES) return save(false);
     return answer==IDNO;
 #else
+    const char* question="Do you want to save your changes? Save keeps your workbook on this device. Don't Save discards your changes.";
+#ifdef __APPLE__
+    const auto answer=run_command("osascript -e "+shell_quote(std::string("button returned of (display dialog ")+applescript_quote(question)+
+        " buttons {\"Cancel\", \"Don't Save\", \"Save\"} default button \"Save\" cancel button \"Cancel\" with title \"Julretsu\")")+" 2>/dev/null");
+    if(answer.status==0&&answer.output=="Save") return save(false);
+    return answer.status==0&&answer.output=="Don't Save";
+#else
+    if(has_command("zenity")) {
+        const auto answer=run_command(std::string("zenity --question --title=Julretsu --ok-label=Save --cancel-label=Cancel --extra-button=")+shell_quote("Don't Save")+" --text="+shell_quote(question)+" 2>/dev/null");
+        if(answer.output=="Don't Save") return true;
+        return answer.status==0&&save(false);
+    }
+    if(has_command("kdialog")) {
+        const auto answer=run_command(std::string("kdialog --title Julretsu --yes-label Save --no-label ")+shell_quote("Don't Save")+" --yesnocancel "+shell_quote(question)+" 2>/dev/null");
+        if(answer.status==0) return save(false);
+        return answer.status==1;
+    }
     message_="Save the workbook before replacing or closing it.";return false;
+#endif
 #endif
 }
 void GridUI::open() {
@@ -1352,6 +1410,9 @@ void GridUI::draw_ai_panel(float height) {
         if(ImGui::Combo("##provider",&provider,providers,2)) { ai_use_settings(default_ai_settings(provider==0?AiProvider::Anthropic:AiProvider::OpenAICompatible)); save_ai_settings(ai_settings_); }
         ImGui::PushTextWrapPos(0);
         ImGui::TextDisabled(anthropic?"Uses your own Anthropic API account.":"OpenAI, Ollama, LM Studio and other servers with a /chat/completions endpoint.");
+#ifndef _WIN32
+        ImGui::TextColored({0.85f,0.52f,0.08f,1},"AI connections currently require the Windows version of Julretsu.");
+#endif
         ImGui::PopTextWrapPos();
         ImGui::TextUnformatted("Model"); ImGui::SetNextItemWidth(-1);
         ImGui::InputTextWithHint("##model","Model name from your provider",ai_model_.data(),ai_model_.size());
@@ -2117,6 +2178,16 @@ void GridUI::draw() {
         ImGui::Spacing(); ImGui::TextDisabled("Scroll with the mouse wheel. Hold Shift to scroll across columns.");
     } else {
         if(ImGui::Button("Keyboard shortcuts & formulas")) guide_popup=true;
+        ImGui::SameLine(); if(ImGui::Button("About Julretsu")) ImGui::OpenPopup("About Julretsu");
+        if(ImGui::BeginPopup("About Julretsu")) {
+#ifndef JULRETSU_VERSION
+#define JULRETSU_VERSION "development"
+#endif
+            ImGui::Text("Julretsu %s",JULRETSU_VERSION);
+            ImGui::TextDisabled("Copyright (c) 2026 Matthew Menchinton & Circuitspecter Studio");
+            ImGui::TextDisabled("Free to use under the Julretsu Software License. Not open source.");
+            ImGui::EndPopup();
+        }
         ImGui::Spacing(); ImGui::TextDisabled("Local calculations. Optional AI with your own provider. Your workspace, your way.");
     }
     ImGui::EndChild();

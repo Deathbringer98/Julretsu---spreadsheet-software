@@ -1,0 +1,59 @@
+name: Installers
+# Builds the macOS and Linux installers. Windows installers are built with package.ps1 on Windows.
+on:
+  push:
+    tags: ['v*']
+    branches: ['installers']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  linux:
+    runs-on: ubuntu-22.04 # older glibc, so the package runs on more distributions
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build xorg-dev libwayland-dev libxkbcommon-dev wayland-protocols libgl1-mesa-dev
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DJULRETSU_BUILD_GUI=ON -DJULRETSU_BUILD_TESTS=OFF
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Package (.deb and .tar.gz)
+        working-directory: build
+        run: cpack -C Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Julretsu-linux
+          path: |
+            build/Julretsu-*.deb
+            build/Julretsu-*.tar.gz
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure (universal: Apple silicon and Intel)
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DJULRETSU_BUILD_GUI=ON -DJULRETSU_BUILD_TESTS=OFF "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+      - name: Build
+        run: cmake --build build --parallel 3
+      - name: Package (.dmg)
+        working-directory: build
+        run: cpack -C Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Julretsu-macOS
+          path: build/Julretsu-*.dmg
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create a draft release with the installers
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --draft --repo "$GITHUB_REPOSITORY" --title "Julretsu ${GITHUB_REF_NAME#v}" --notes "Julretsu ${GITHUB_REF_NAME#v} installers for macOS and Linux. Add the Windows installer built with package.ps1."

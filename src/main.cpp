@@ -11,6 +11,7 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -102,7 +103,20 @@ void font(float scale) {
     if(!io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/georgia.ttf",20*scale))io.Fonts->AddFontDefault(&config);
     if(!io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/consola.ttf",20*scale))io.Fonts->AddFontDefault(&config);
 #else
-    io.Fonts->AddFontDefault(&config);
+    // Sans, serif and monospace system fonts, in the same order as on Windows; ImGui's font if none exist.
+    auto add=[&](std::initializer_list<const char*> candidates) {
+        for(const char* candidate:candidates) { std::error_code error; if(std::filesystem::exists(candidate,error)&&io.Fonts->AddFontFromFileTTF(candidate,20*scale)) return; }
+        io.Fonts->AddFontDefault(&config);
+    };
+#ifdef __APPLE__
+    add({"/System/Library/Fonts/Supplemental/Arial.ttf","/Library/Fonts/Arial.ttf"});
+    add({"/System/Library/Fonts/Supplemental/Georgia.ttf","/Library/Fonts/Georgia.ttf"});
+    add({"/System/Library/Fonts/Supplemental/Courier New.ttf","/Library/Fonts/Courier New.ttf"});
+#else
+    add({"/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf","/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf","/usr/share/fonts/TTF/DejaVuSans.ttf","/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"});
+    add({"/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf","/usr/share/fonts/dejavu-serif-fonts/DejaVuSerif.ttf","/usr/share/fonts/TTF/DejaVuSerif.ttf","/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf"});
+    add({"/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf","/usr/share/fonts/dejavu-sans-mono-fonts/DejaVuSansMono.ttf","/usr/share/fonts/TTF/DejaVuSansMono.ttf","/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf"});
+#endif
 #endif
 }
 void screenshot(const std::string& path,int width,int height) {
@@ -395,6 +409,9 @@ int main(int argc,char** argv) {
                 }
             }
             ImGui::NewFrame();
+#ifdef __APPLE__
+            io.KeyCtrl=io.KeyCtrl||io.KeySuper; // Cmd+S, Cmd+Z and friends work as Mac users expect
+#endif
             const auto grid_before=julretsu::metrics::cpp_allocations.load();
             app.draw();
             window_frame.update(app.caption_height(),app.caption_enabled(),app.caption_items());

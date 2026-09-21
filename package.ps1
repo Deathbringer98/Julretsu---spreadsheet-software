@@ -6,7 +6,8 @@ $buildDir = Join-Path $project 'build-native'
 $binary = Join-Path $buildDir 'julretsu.exe'
 if (-not (Test-Path -LiteralPath $binary)) { $binary = Join-Path $buildDir 'Release\julretsu.exe' }
 if (-not (Test-Path -LiteralPath $binary)) { throw 'Build the Release GUI first.' }
-$destination = Join-Path $project 'release\Julretsu-0.5.0'
+$version = ([regex]::Match((Get-Content -Raw (Join-Path $project 'CMakeLists.txt')),'project\(Julretsu VERSION ([0-9.]+)')).Groups[1].Value
+$destination = Join-Path $project "release\Julretsu-$version"
 $notices = Join-Path $destination 'licenses'
 New-Item -ItemType Directory -Force -Path $notices | Out-Null
 Copy-Item -LiteralPath $binary -Destination (Join-Path $destination 'Julretsu.exe') -Force

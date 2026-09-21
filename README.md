@@ -1,4 +1,4 @@
-# Julretsu 0.5.0
+# Julretsu 1.0.0
 ### A native spreadsheet workbench
 
 Julretsu now includes a Windows-tested native ImGui application, a sparse C++20
@@ -10,7 +10,7 @@ locally in this Windows session.
 
 ## Start the app
 Double-click **Start Julretsu.cmd** in this folder, or open
-**release/Julretsu-0.5.0/Julretsu.exe**. Keep the supplied DLLs beside the executable.
+**release/Julretsu-1.0.0/Julretsu.exe**. Keep the supplied DLLs beside the executable.
 
 [Quick start and controls](docs/QUICKSTART.md) ·
 [Steps 3–4 acceptance report](docs/ACCEPTANCE-0.2.md) ·

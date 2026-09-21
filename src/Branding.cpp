@@ -45,20 +45,27 @@ Image load(const std::filesystem::path& path) {
 }
 }
 std::filesystem::path Branding::asset_directory() {
+    std::filesystem::path executable_dir;
 #ifdef _WIN32
     std::array<wchar_t,32768> path{};
     const auto n=GetModuleFileNameW(nullptr,path.data(),DWORD(path.size()));
-    if(n&&n<path.size()) return std::filesystem::path(path.data()).parent_path()/"assets";
+    if(n&&n<path.size()) executable_dir=std::filesystem::path(path.data()).parent_path();
 #elif defined(__APPLE__)
     std::uint32_t size=0; _NSGetExecutablePath(nullptr,&size);
     std::vector<char> path(size);
-    if(_NSGetExecutablePath(path.data(),&size)==0) return std::filesystem::weakly_canonical(path.data()).parent_path()/"assets";
+    if(_NSGetExecutablePath(path.data(),&size)==0) executable_dir=std::filesystem::weakly_canonical(path.data()).parent_path();
 #else
     std::array<char,4096> path{};
     const auto n=readlink("/proc/self/exe",path.data(),path.size()-1);
-    if(n>0) return std::filesystem::path(std::string(path.data(),std::size_t(n))).parent_path()/"assets";
+    if(n>0) executable_dir=std::filesystem::path(std::string(path.data(),std::size_t(n))).parent_path();
 #endif
-    return std::filesystem::current_path()/"assets";
+    // Beside the program (Windows, portable), in a macOS app bundle, or in a Linux /usr or /opt layout.
+    if(!executable_dir.empty())
+        for(const auto& candidate:{executable_dir/"assets",executable_dir/".."/"Resources"/"assets",executable_dir/".."/"share"/"julretsu"/"assets"}) {
+            std::error_code error;
+            if(std::filesystem::exists(candidate/"app-icon.png",error)) return candidate;
+        }
+    return executable_dir.empty()?std::filesystem::current_path()/"assets":executable_dir/"assets";
 }
 Branding::Branding(GLFWwindow* window) {
     const auto assets=asset_directory();
