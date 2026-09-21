@@ -149,6 +149,7 @@ std::size_t memory_bytes() {
 }
 int main(int argc,char** argv) {
     bool smoke=false, benchmark=false, show=false, no_splash=false, system_titlebar=false;
+    std::string manual_dir; // --manual-shots: clean screenshots of each feature for the user manual
     std::string capture="julretsu";
     std::filesystem::path open_path;
     bool check_open=false;
@@ -163,6 +164,7 @@ int main(int argc,char** argv) {
         }
         else if(arg=="--smoke") smoke=true;
         else if(arg=="--system-titlebar") system_titlebar=true;
+        else if(arg=="--manual-shots"&&i+1<argc) { manual_dir=argv[++i]; no_splash=true; }
         else if(arg=="--benchmark") benchmark=true;
         else if(arg=="--visible") show=true;
         else if(arg=="--no-splash") no_splash=true;
@@ -176,7 +178,7 @@ int main(int argc,char** argv) {
         for(int i=1;i<argument_count;++i) {
             const std::wstring_view argument=arguments[i];
             if(argument==L"--open"&&i+1<argument_count) open_path=arguments[++i];
-            else if(argument==L"--capture-prefix"&&i+1<argument_count) ++i;
+            else if((argument==L"--capture-prefix"||argument==L"--manual-shots")&&i+1<argument_count) ++i;
             else if(!argument.empty()&&argument.front()!=L'-') open_path=arguments[i];
         }
         LocalFree(arguments);
@@ -235,7 +237,8 @@ int main(int argc,char** argv) {
         app.native_window=glfwGetWin32Window(window.get());
 #endif
         app.custom_frame=window_frame.active();
-        if(smoke||benchmark) app.disable_recovery();
+        if(smoke||benchmark||!manual_dir.empty()) app.disable_recovery();
+        if(!manual_dir.empty()) app.set_dark(false,false);
         if(smoke||benchmark) app.set_dark(false,false);
         bool current_dark=app.dark(); theme(scale,current_dark);
         if(smoke&&std::getenv("JULRETSU_SETTINGS_PATH")) {
@@ -276,7 +279,7 @@ int main(int argc,char** argv) {
         std::vector<double> frames; frames.reserve(400);
         std::size_t cpp_allocations=0,imgui_allocations=0,grid_allocations=0;
         bool quit=false;
-        const int frame_limit=smoke?190:(benchmark?400:0);
+        const int frame_limit=smoke?190:(benchmark?400:(!manual_dir.empty()?100:0));
         const int warmup=smoke?150:60;
         int frame=0; bool smoke_ok=true;
         while(!quit) {
@@ -304,6 +307,37 @@ int main(int argc,char** argv) {
             if(current_dark!=app.dark()) { current_dark=app.dark(); theme(scale,current_dark); }
             app.prepare();
             ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame();
+            if(!manual_dir.empty()) {
+                // Walk through the features on the example workbook, pausing a few frames for each screenshot.
+                io.AddFocusEvent(true);
+                const auto file_button=app.targets[julretsu::GridUI::FileButton];
+                if(frame==6) { io.AddMousePosEvent(file_button.x,file_button.y); io.AddMouseButtonEvent(0,true); }
+                if(frame==7) io.AddMouseButtonEvent(0,false);
+                if(frame==11) io.AddKeyEvent(ImGuiKey_Escape,true);
+                if(frame==12) { io.AddKeyEvent(ImGuiKey_Escape,false); io.AddMousePosEvent(-FLT_MAX,-FLT_MAX); }
+                if(frame==14) app.smoke_show_format(true);
+                if(frame==18) { app.smoke_show_format(false); io.AddKeyEvent(ImGuiKey_Escape,true); }
+                if(frame==19) io.AddKeyEvent(ImGuiKey_Escape,false);
+                if(frame==22) app.smoke_health_example(true);
+                if(frame==27) app.smoke_health_example(false);
+                if(frame==30) app.smoke_open_review();
+                if(frame==35) app.smoke_close_review();
+                if(frame==38) app.smoke_queue_edit({4,2},"3");
+                if(frame==40) app.smoke_queue_edit({4,2},"5");
+                if(frame==43) { app.jump({4,2}); app.smoke_show_history({4,2},true); }
+                if(frame==48) app.smoke_show_history({4,2},false);
+                if(frame==52) app.show_ai(true);
+                if(frame==57) app.show_ai(false);
+                if(frame==60) app.show_scripts(true);
+                if(frame==64) app.show_scripts(false);
+                if(frame==67) app.smoke_show_report(true,{2,0},{8,4});
+                if(frame==72) app.smoke_show_report(false);
+                if(frame==75) app.smoke_workbook_window(1);
+                if(frame==79) app.smoke_workbook_window(0);
+                if(frame==82) app.set_dark(true,false);
+                if(frame==87) app.set_dark(false,false);
+                if(frame==90) { app.jump({3,2}); app.smoke_ribbon_tab(3); }
+            }
             if(smoke) {
                 io.AddFocusEvent(true);
                 if(frame==70) {
@@ -422,6 +456,11 @@ int main(int argc,char** argv) {
             int width{},height{}; glfwGetFramebufferSize(window.get(),&width,&height);
             glViewport(0,0,width,height); glClearColor(0.97f,0.98f,0.985f,1); glClear(GL_COLOR_BUFFER_BIT);
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+            if(!manual_dir.empty()) {
+                static const std::pair<int,const char*> shots[]{{5,"overview"},{10,"file-menu"},{17,"format-cells"},{26,"sheet-check"},{34,"review"},
+                    {47,"cell-history"},{56,"ai-assistant"},{63,"lua"},{71,"chart-report"},{78,"workbook-floating"},{86,"dark-mode"},{93,"review-tab"}};
+                for(const auto& [at,name]:shots) if(frame==at) screenshot(manual_dir+"/"+name+".bmp",width,height);
+            }
             if(smoke&&frame==94) screenshot(capture+"-file-menu.bmp",width,height);
             if(smoke&&frame==107)screenshot(capture+"-cell-format.bmp",width,height);
             if(smoke&&frame==114)screenshot(capture+"-report-preview.bmp",width,height);

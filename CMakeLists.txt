@@ -138,6 +138,17 @@ if(JULRETSU_BUILD_GUI)
     set_target_properties(julretsu PROPERTIES WIN32_EXECUTABLE TRUE)
   endif()
   julretsu_target(julretsu)
+  if(WIN32)
+    # Windows setup program; package.ps1 appends the zipped app to make the installer.
+    configure_file(installer/Setup.rc.in ${CMAKE_CURRENT_BINARY_DIR}/Setup.rc @ONLY)
+    add_executable(julretsu_setup WIN32 installer/Setup.cpp ${CMAKE_CURRENT_BINARY_DIR}/Setup.rc)
+    target_compile_definitions(julretsu_setup PRIVATE UNICODE _UNICODE _WIN32_WINNT=0x0A00 JULRETSU_VERSION="${PROJECT_VERSION}")
+    target_link_libraries(julretsu_setup PRIVATE julretsu_zip comctl32 shell32 ole32 uuid advapi32)
+    if(MINGW)
+      target_link_options(julretsu_setup PRIVATE -static) # a single file with no runtime DLLs
+    endif()
+    julretsu_target(julretsu_setup)
+  endif()
   if(NOT WIN32)
     # macOS .dmg and Linux .deb/.tar.gz installers (cpack). Windows uses package.ps1 and the Julretsu setup program.
     set(docs "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE" "${CMAKE_CURRENT_SOURCE_DIR}/THIRD_PARTY_NOTICES.md")

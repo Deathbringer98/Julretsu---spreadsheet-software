@@ -1163,7 +1163,8 @@ void GridUI::evaluate_latest_change() {
 void GridUI::refresh_health(bool force) {
     if(!force&&health_revision_==sheet_.revision()&&health_instance_==sheet_.instance()) return;
     const auto now=std::chrono::steady_clock::now();
-    if(!force&&now-health_time_<std::chrono::milliseconds(350)) return;
+    // Small sheets scan in well under a millisecond; only large ones are throttled while typing.
+    if(!force&&sheet_.populated_cells()>5'000&&now-health_time_<std::chrono::milliseconds(350)) return;
     // Very large sheets are only scanned while the panel is open, to keep typing smooth.
     if(!force&&!health_open_&&sheet_.populated_cells()>20'000) { health_.clear(); health_revision_=sheet_.revision(); health_instance_=sheet_.instance(); return; }
     health_=check_sheet_health(sheet_); health_revision_=sheet_.revision(); health_instance_=sheet_.instance(); health_time_=now;
@@ -2163,8 +2164,10 @@ void GridUI::draw() {
         ImGui::SameLine(); if(ribbon_button("Change log",Glyph::Book,scale_,100)) changelog_open_=true;
         ImGui::SameLine(0,20*scale_); ImGui::BeginGroup();
         ImGui::Checkbox("Review large or risky changes before keeping them",&review_enabled_);
-        ImGui::BeginDisabled(!review_enabled_); ImGui::SetNextItemWidth(220*scale_);
-        ImGui::SliderInt("##review-threshold",&review_threshold_,5,1000,"Ask when %d+ cells change",ImGuiSliderFlags_AlwaysClamp|ImGuiSliderFlags_Logarithmic);
+        ImGui::BeginDisabled(!review_enabled_);
+        ImGui::AlignTextToFramePadding(); ImGui::TextUnformatted("Ask when at least"); ImGui::SameLine(); ImGui::SetNextItemWidth(130*scale_);
+        if(ImGui::InputInt("##review-threshold",&review_threshold_,10,50)) review_threshold_=std::clamp(review_threshold_,5,1000);
+        ImGui::SameLine(); ImGui::TextUnformatted("cells change at once");
         ImGui::EndDisabled();
         ImGui::TextDisabled("Sorts that leave columns behind, deleted data, replaced formulas and out-of-scale numbers are always reviewed.");
         ImGui::EndGroup();

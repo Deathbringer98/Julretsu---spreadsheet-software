@@ -38,6 +38,8 @@ Copy-Item -LiteralPath (Join-Path (DependencySource 'lua' 'lua-5.4.9') 'src\lua.
 Copy-Item -LiteralPath (Join-Path $project 'LICENSE') -Destination $destination -Force
 Copy-Item -LiteralPath (Join-Path $project 'THIRD_PARTY_NOTICES.md') -Destination $destination -Force
 Copy-Item -LiteralPath (Join-Path $project 'docs\QUICKSTART.md') -Destination (Join-Path $destination 'START-HERE.md') -Force
+$manual = Join-Path $project 'docs\Julretsu-User-Manual.pdf'
+if (Test-Path -LiteralPath $manual) { Copy-Item -LiteralPath $manual -Destination $destination -Force }
 Write-Output "Portable Windows app: $destination\Julretsu.exe"
 
 Copy-Item -LiteralPath (Join-Path $project 'tools\Register-Julretsu.ps1') -Destination $destination -Force
@@ -46,3 +48,20 @@ Copy-Item -LiteralPath (Join-Path $project 'tools\Register-Julretsu.ps1') -Desti
 if (Test-Path -LiteralPath 'Registry::HKEY_CURRENT_USER\Software\Classes\Julretsu.Workbook') {
     & (Join-Path $destination 'Register-Julretsu.ps1')
 }
+
+# One-file Windows installer: the setup program followed by the zipped app and a small footer.
+$stub = Join-Path $buildDir 'julretsu_setup.exe'
+if (-not (Test-Path -LiteralPath $stub)) { throw 'Build the Julretsu setup program first (build.ps1 -Gui).' }
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$payload = Join-Path $project "release\Julretsu-$version-payload.zip"
+if (Test-Path -LiteralPath $payload) { Remove-Item -LiteralPath $payload -Force }
+[System.IO.Compression.ZipFile]::CreateFromDirectory($destination, $payload, [System.IO.Compression.CompressionLevel]::Optimal, $false)
+$installer = Join-Path $project "release\Julretsu-$version-Windows-Setup.exe"
+$output = [System.IO.File]::Create($installer)
+try {
+    foreach ($part in @($stub, $payload)) { $bytes = [System.IO.File]::ReadAllBytes($part); $output.Write($bytes, 0, $bytes.Length) }
+    $size = [BitConverter]::GetBytes([UInt64](Get-Item -LiteralPath $payload).Length); $output.Write($size, 0, 8)
+    $magic = [System.Text.Encoding]::ASCII.GetBytes('JULSETUP'); $output.Write($magic, 0, 8)
+} finally { $output.Dispose() }
+Remove-Item -LiteralPath $payload -Force
+Write-Output "Windows installer: $installer"

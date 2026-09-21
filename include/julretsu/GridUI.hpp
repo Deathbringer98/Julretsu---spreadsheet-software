@@ -183,6 +183,8 @@ public:
     void smoke_open_review();
     void smoke_close_review();
     void smoke_health_example(bool show);
+    void smoke_show_history(CellCoord cell,bool show) { history_cell_=cell; history_open_=show; }
+    void smoke_ribbon_tab(int tab) { ribbon_tab_=tab; }
     [[nodiscard]] const std::optional<AiProposal>& ai_proposal() const noexcept { return ai_proposal_; }
     void smoke_ai_proposal(std::string_view reply);
     bool smoke_selection_tools();
