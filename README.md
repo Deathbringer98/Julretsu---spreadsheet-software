@@ -69,7 +69,7 @@ cmake --build build-native --config Release --parallel 2
 ctest --test-dir build-native -C Release --output-on-failure
 ```
 
-On Linux/macOS run ./build-native/julretsu. For the headless convenience script,
+-On Linux/macOS run ./build-native/julretsu. For the headless convenience script,
 run sh ./build.sh. On Linux, GLFW may require xorg-dev, libwayland-dev,
 libxkbcommon-dev, and libgl1-mesa-dev (package names vary by distribution).
 macOS requires Xcode command-line tools. Windows requires an OpenGL-capable
