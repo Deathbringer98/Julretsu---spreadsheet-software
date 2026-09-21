@@ -6,7 +6,7 @@ spreadsheet engine, and bounded Lua formulas/macros. Julretsu is free to use but
 The architecture also targets Linux and macOS; those builds have not been run
 locally in this Windows session.
 
-The app now uses your supplied icon and startup banner. See [branding notes](docs/BRANDING-0.2.1.md).
+- The app now uses your supplied icon and startup banner. See [branding notes](docs/BRANDING-0.2.1.md).
 
 ## Start the app
 Double-click **Start Julretsu.cmd** in this folder, or open
