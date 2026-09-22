@@ -42,7 +42,14 @@ jobs:
           cmake --build build --parallel 3 2>&1 | tee build.log || { grep -E "error|Error" build.log | head -25 | while IFS= read -r line; do echo "::error::$line"; done; exit 1; }
       - name: Package (.dmg)
         working-directory: build
-        run: cpack -C Release
+        # hdiutil sometimes reports "Resource busy" on hosted runners, so retry before giving up.
+        run: |
+          for attempt in 1 2 3; do
+            cpack -C Release > cpack.log 2>&1 && exit 0
+            echo "cpack attempt $attempt failed"; sleep 15
+          done
+          grep -iE "error|busy|failed" cpack.log | head -25 | while IFS= read -r line; do echo "::error::$line"; done
+          exit 1
       - uses: actions/upload-artifact@v4
         with:
           name: Julretsu-macOS
