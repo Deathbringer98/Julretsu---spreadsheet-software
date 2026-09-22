@@ -269,6 +269,7 @@ int main(int argc,char** argv) {
             julretsu::GridUI tool_check; tool_check.disable_recovery();
             if(!tool_check.smoke_workbook_features(capture+"-features.julretsu"))throw std::runtime_error("Advanced workbook smoke checks failed");
             std::cout<<"Cell styles, clipboard, sequences, worksheet links, multi-sheet persistence, filters and reports passed\n";
+            if(!tool_check.smoke_report_export(capture+"-report-exports"))throw std::runtime_error("Report export regression failed");
             if(!tool_check.smoke_selection_tools()) throw std::runtime_error("Selection tools smoke checks failed");
             if(!tool_check.smoke_safety_net(capture+"-safety.julretsu")) throw std::runtime_error("Safety net smoke checks failed");
             std::cout<<"Safety net: typed outliers, change review, formula overwrite, partial sort, sheet check fix, saved history passed\n";

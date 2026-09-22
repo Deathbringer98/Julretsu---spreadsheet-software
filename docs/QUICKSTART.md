@@ -138,3 +138,11 @@ A failed macro leaves the sheet unchanged.
 - Reports > Chart / print selected range: bar or line chart from the active numeric column, title, portrait/landscape and repeating first row. Print includes chart and table; choose Microsoft Print to PDF to save PDF. Reports are snapshots rather than saved chart objects. Maximum 12 columns / 10,000 cells; long printed text is ellipsized.
 
 Use native .julretsu saving to preserve multiple sheets and individual-cell formatting. Older native files open; new files require this version. CSV and Excel export still target the active sheet and retain their previously documented format limits (new cell-level formatting is not exported to Excel yet). Theme, filter, freeze and chart-preview choices are session-only.
+
+## Version 1.0.1 reports and sample workbooks
+
+With one cell selected, Reports captures the used worksheet. Select a rectangular range first to limit it. Choose the chart column in the preview; only finite numeric values are charted (up to 1,000). Filters are respected. One-value line charts use a visible bar in the native preview and Windows printout.
+
+Export chart + table (HTML) saves a self-contained report with an embedded vector chart, UTF-8 text and a wrapping table. Open it in a browser and choose Print / Save as PDF on Windows, macOS or Linux. No internet connection is needed. The landscape and repeating-first-row settings are included. Windows also offers its native Print / Save as PDF dialog. CSV and XLSX export remain data exchange formats; use Reports to export the visual chart.
+
+Templates now include Project budget, Monthly sales, Household expenses, Inventory planning, and Weekly project hours. All sample values are fictional; the four new templates include calculated columns and 10-12 data rows. Save your work before replacing a workbook with a template.

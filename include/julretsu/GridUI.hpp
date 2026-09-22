@@ -37,7 +37,7 @@ class GridUI {
     CellCoord active_{0,0}, anchor_{0,0};
     std::vector<RowInterval> row_selection_;
     Batch queued_;
-    enum class Action { None, Undo, Redo, Clear, Bold, Tint, ResetStyle, Macro, New, Demo, DecimalsLess, DecimalsMore, Save, SaveAs, Open, ImportCsv, ExportCsv, ImportXlsx, ExportXlsx, AiSend, AiApply, FillDown, FillRight, QuickSum, QuickAverage, Copy, Cut, Paste, PasteValues, CellFormat, InsertRow, DeleteRow, InsertColumn, DeleteColumn, SortAscending, SortDescending, AddSheet, DuplicateSheet, DeleteSheet, RenameSheet, MoveSheetLeft, MoveSheetRight, DragFill, PrintReport };
+    enum class Action { None, Undo, Redo, Clear, Bold, Tint, ResetStyle, Macro, New, Demo, DecimalsLess, DecimalsMore, Save, SaveAs, Open, ImportCsv, ExportCsv, ImportXlsx, ExportXlsx, AiSend, AiApply, FillDown, FillRight, QuickSum, QuickAverage, Copy, Cut, Paste, PasteValues, CellFormat, InsertRow, DeleteRow, InsertColumn, DeleteColumn, SortAscending, SortDescending, AddSheet, DuplicateSheet, DeleteSheet, RenameSheet, MoveSheetLeft, MoveSheetRight, DragFill, PrintReport, ExportReport };
     Action action_=Action::None;
     std::array<char,16385> editor_{}, script_{};
     std::array<char,32> address_{};
@@ -68,6 +68,11 @@ class GridUI {
     CellCoord report_first_{},report_last_{};
     std::vector<float> chart_values_;
     std::vector<std::vector<std::string>> report_rows_;
+    int report_column_=0, template_choice_=0;
+    std::vector<std::vector<Value>> report_values_;
+    void rebuild_chart();
+    void export_report(const std::filesystem::path&);
+    void load_template(int);
     void prepare_report();
     void draw_report();
     void print_report(const std::filesystem::path& output={});
@@ -187,6 +192,7 @@ public:
     void smoke_ribbon_tab(int tab) { ribbon_tab_=tab; }
     [[nodiscard]] const std::optional<AiProposal>& ai_proposal() const noexcept { return ai_proposal_; }
     void smoke_ai_proposal(std::string_view reply);
+    bool smoke_report_export(const std::filesystem::path&);
     bool smoke_selection_tools();
     bool smoke_workbook_features(const std::filesystem::path&);
     void smoke_show_format(bool show) {format_style_=sheet_.cell_style(active_);format_open_=show;}

@@ -27,6 +27,7 @@
 #include <cstdlib>
 
 namespace julretsu {
+static std::string to_address(CellCoord c) { return std::get<std::string>(to_a1(c)); }
 namespace {
 std::filesystem::path appearance_path() {
     if(const char* override_path=std::getenv("JULRETSU_SETTINGS_PATH")) return std::filesystem::path(override_path);
@@ -358,7 +359,7 @@ std::optional<std::filesystem::path> workbook_dialog(bool save,const std::filesy
     const auto initial=current.empty()?(std::wstring(L"Untitled workbook.")+extension):current.wstring();
     std::copy_n(initial.c_str(),std::min(initial.size(),name.size()-1),name.data());
     OPENFILENAMEW dialog{}; dialog.lStructSize=sizeof(dialog); dialog.hwndOwner=static_cast<HWND>(owner);
-    dialog.lpstrFilter=std::wstring_view(extension)==L"xlsx"?L"Excel Workbook (*.xlsx)\0*.xlsx\0\0":std::wstring_view(extension)==L"csv"?L"CSV (UTF-8) (*.csv)\0*.csv\0\0":L"Julretsu Workbook (*.julretsu)\0*.julretsu\0\0";
+    dialog.lpstrFilter=std::wstring_view(extension)==L"html"?L"Chart report (*.html)\0*.html\0\0":std::wstring_view(extension)==L"xlsx"?L"Excel Workbook (*.xlsx)\0*.xlsx\0\0":std::wstring_view(extension)==L"csv"?L"CSV (UTF-8) (*.csv)\0*.csv\0\0":L"Julretsu Workbook (*.julretsu)\0*.julretsu\0\0";
     dialog.lpstrFile=name.data(); dialog.nMaxFile=DWORD(name.size()); dialog.lpstrDefExt=extension;
     dialog.lpstrTitle=save?L"Save workbook locally":L"Open a Julretsu workbook";
     dialog.Flags=OFN_EXPLORER|OFN_NOCHANGEDIR|OFN_PATHMUSTEXIST|(save?OFN_OVERWRITEPROMPT:OFN_FILEMUSTEXIST);
@@ -652,37 +653,69 @@ void GridUI::draw_sheets() {
     }
 }
 void GridUI::prepare_report() {
+    const auto chart_column=active_.column;
+    // A single selected cell means the user wants a report of the worksheet.
+    if(active_==anchor_) {
+        report_first_={max_rows-1,max_columns-1}; report_last_={};
+        for(const auto& [r,row]:sheet_.populated_rows()) for(const auto& [c,cell]:row) {
+            (void)cell; report_first_.row=std::min(report_first_.row,r); report_first_.column=std::min(report_first_.column,c);
+            report_last_.row=std::max(report_last_.row,r); report_last_.column=std::max(report_last_.column,c);
+        }
+        if(sheet_.populated_cells()==0) throw std::runtime_error("The worksheet is empty.");
+    } else {
     report_first_={std::min(active_.row,anchor_.row),std::min(active_.column,anchor_.column)};
     report_last_={std::max(active_.row,anchor_.row),std::max(active_.column,anchor_.column)};
+    }
     if(std::uint64_t(report_last_.row-report_first_.row+1)*(report_last_.column-report_first_.column+1)>10000||report_last_.column-report_first_.column>=12)throw std::runtime_error("Select at most 10,000 cells and 12 columns for a report.");
-    report_rows_.clear();chart_values_.clear();
+    report_rows_.clear();report_values_.clear();chart_values_.clear();
     for(unsigned r=report_first_.row;r<=report_last_.row;++r){
         if(viewport_.filtered&&std::find(viewport_.filtered_rows.begin(),viewport_.filtered_rows.end(),r)==viewport_.filtered_rows.end())continue;
-        std::vector<std::string> row;
-        for(unsigned c=report_first_.column;c<=report_last_.column;++c){auto value=sheet_.read({r,c});row.push_back(display(value));if(c==active_.column)if(auto n=std::get_if<double>(&value);n&&std::abs(*n)<=1e30&&chart_values_.size()<1000)chart_values_.push_back(float(*n));}
-        report_rows_.push_back(std::move(row));
+        std::vector<std::string> row; std::vector<Value> values;
+        for(unsigned c=report_first_.column;c<=report_last_.column;++c){auto value=sheet_.read({r,c});row.push_back(display(value));values.push_back(value);}
+        report_rows_.push_back(std::move(row));report_values_.push_back(std::move(values));
     }
+    report_column_=int(std::clamp(chart_column,report_first_.column,report_last_.column)-report_first_.column);
+    rebuild_chart();
+    if(chart_values_.empty()) for(unsigned c=0;c<=report_last_.column-report_first_.column;++c) {report_column_=int(c);rebuild_chart();if(!chart_values_.empty())break;}
     std::snprintf(report_title_.data(),report_title_.size(),"%s",workbook_name_.c_str());report_open_=true;
+}
+void GridUI::rebuild_chart() {
+    chart_values_.clear();
+    for(const auto& row:report_values_) if(auto n=std::get_if<double>(&row.at(report_column_));n&&std::isfinite(*n)&&std::abs(*n)<=1e30&&chart_values_.size()<1000)chart_values_.push_back(float(*n));
 }
 void GridUI::draw_report() {
     if(report_open_)ImGui::OpenPopup("Chart and print preview");
     ImGui::SetNextWindowSize({760*scale_,650*scale_},ImGuiCond_Appearing);
     if(ImGui::BeginPopupModal("Chart and print preview",&report_open_)){
         ImGui::InputText("Report title",report_title_.data(),report_title_.size());
-        ImGui::TextUnformatted("Snapshot of selection; chart uses numeric values in the active column (up to 1,000).");
+        ImGui::Text("Report range: %s : %s",to_address(report_first_).c_str(),to_address(report_last_).c_str());
+        ImGui::TextWrapped("Select a range before opening to report only those cells. Charts include up to 1,000 numeric values.");
+        std::string selected_column=to_address({0,report_first_.column+unsigned(report_column_)});selected_column.pop_back();
+        if(ImGui::BeginCombo("Chart column",selected_column.c_str())) {
+            for(unsigned c=0;c<=report_last_.column-report_first_.column;++c){auto label=to_address({0,report_first_.column+c});label.pop_back();if(ImGui::Selectable(label.c_str(),report_column_==int(c))){report_column_=int(c);rebuild_chart();}}
+            ImGui::EndCombo();
+        }
+        ImGui::Text("Chart: %zu values",chart_values_.size());
         ImGui::Checkbox("Line chart",&chart_line_);ImGui::SameLine();ImGui::Checkbox("Landscape print",&print_landscape_);ImGui::SameLine();ImGui::Checkbox("Repeat first row",&print_header_);
         if(!chart_values_.empty()){
             // Match the printed chart colour.
             ImGui::PushStyleColor(ImGuiCol_PlotHistogram,ImVec4{0.12f,0.57f,0.43f,1});ImGui::PushStyleColor(ImGuiCol_PlotLines,ImVec4{0.12f,0.57f,0.43f,1});
-            if(chart_line_)ImGui::PlotLines("##chart",chart_values_.data(),int(chart_values_.size()),0,nullptr,FLT_MAX,FLT_MAX,{-1,170*scale_});
-            else ImGui::PlotHistogram("##chart",chart_values_.data(),int(chart_values_.size()),0,nullptr,FLT_MAX,FLT_MAX,{-1,170*scale_});
+            auto [lo,hi]=std::minmax_element(chart_values_.begin(),chart_values_.end());
+            float low=std::min(0.0f,*lo),high=std::max(0.0f,*hi);if(low==high)high=low+1;float pad=(high-low)*0.05f;low-=pad;high+=pad;
+            if(chart_line_&&chart_values_.size()>1)ImGui::PlotLines("##chart",chart_values_.data(),int(chart_values_.size()),0,nullptr,low,high,{-1,150*scale_});
+            else ImGui::PlotHistogram("##chart",chart_values_.data(),int(chart_values_.size()),0,nullptr,low,high,{-1,150*scale_});
             ImGui::PopStyleColor(2);
+            if(chart_line_&&chart_values_.size()==1)ImGui::TextUnformatted("One value: shown as a bar so it remains visible.");
         }else ImGui::TextDisabled("Select a numeric column to draw a chart.");
         if(!report_rows_.empty()&&ImGui::BeginTable("Report table",int(report_rows_[0].size()),ImGuiTableFlags_Borders|ImGuiTableFlags_RowBg|ImGuiTableFlags_ScrollY,{-1,std::max(90*scale_,ImGui::GetContentRegionAvail().y-100*scale_)})){
             ImGuiListClipper clipper;clipper.Begin(int(report_rows_.size()));while(clipper.Step())for(int r=clipper.DisplayStart;r<clipper.DisplayEnd;++r){ImGui::TableNextRow();for(const auto& value:report_rows_[r]){ImGui::TableNextColumn();ImGui::TextUnformatted(value.c_str());}}ImGui::EndTable();
         }
-        ImGui::TextWrapped("Print includes the chart, table, title and page numbers. Choose Microsoft Print to PDF in the printer dialog to save a PDF.");
-        if(ImGui::Button("Print / Save table as PDF..."))action_=Action::PrintReport;ImGui::SameLine();if(ImGui::Button("Close")){report_open_=false;ImGui::CloseCurrentPopup();}ImGui::EndPopup();
+        ImGui::TextWrapped("Export a report with its chart and table. Open the HTML file in a browser and use Print / Save as PDF on any platform.");
+        if(ImGui::Button("Export chart + table (HTML)..."))action_=Action::ExportReport;
+#ifdef _WIN32
+        ImGui::SameLine();if(ImGui::Button("Print / Save as PDF..."))action_=Action::PrintReport;
+#endif
+        ImGui::SameLine();if(ImGui::Button("Close")){report_open_=false;ImGui::CloseCurrentPopup();}ImGui::EndPopup();
     }
 }
 void GridUI::print_report(const std::filesystem::path& output) {
@@ -708,8 +741,9 @@ void GridUI::print_report(const std::filesystem::path& output) {
             auto py=[&](float value){return y+chart_height-int((double(value)-low)/(high-low)*chart_height);};
             int zero=py(0);MoveToEx(dc,margin,zero,nullptr);LineTo(dc,margin+chart_width,zero);
             auto brush=CreateSolidBrush(RGB(30,145,110));auto previous=SelectObject(dc,brush);
-            for(std::size_t i=0;i<chart_values_.size();++i){int x=margin+int(double(i)*chart_width/chart_values_.size()),xx=margin+int(double(i+1)*chart_width/chart_values_.size());int value_y=py(chart_values_[i]);if(chart_line_){if(i==0)MoveToEx(dc,x,value_y,nullptr);else LineTo(dc,x,value_y);}else Rectangle(dc,x,std::min(zero,value_y),std::max(x+1,xx-2),std::max(zero,value_y)+1);}
-            SelectObject(dc,previous);DeleteObject(brush);y+=chart_height+row_height;
+            auto pen=CreatePen(PS_SOLID,std::max(1,dpi/72),RGB(30,145,110));auto old_pen=SelectObject(dc,pen);
+            for(std::size_t i=0;i<chart_values_.size();++i){int x=margin+int(double(i)*chart_width/chart_values_.size()),xx=margin+int(double(i+1)*chart_width/chart_values_.size());int value_y=py(chart_values_[i]);if(chart_line_&&chart_values_.size()>1){if(i==0)MoveToEx(dc,x,value_y,nullptr);else LineTo(dc,x,value_y);}else Rectangle(dc,x,std::min(zero,value_y),std::max(x+1,xx-2),std::max(zero,value_y)+1);}
+            SelectObject(dc,old_pen);DeleteObject(pen);SelectObject(dc,previous);DeleteObject(brush);y+=chart_height+row_height;
         }
         if(offset&&print_header_){draw_row(0,y);y+=row_height;}
         while(offset<report_rows_.size()&&y+row_height<margin+height-row_height){draw_row(offset++,y);y+=row_height;}
@@ -721,6 +755,76 @@ void GridUI::print_report(const std::filesystem::path& output) {
     (void)output;throw std::runtime_error("Native printing is currently available on Windows.");
 #endif
 }
+bool GridUI::smoke_report_export(const std::filesystem::path& dir) {
+    std::filesystem::create_directories(dir);
+    load_demo();select({3,2});prepare_report();
+    if(report_rows_.size()!=14||chart_values_.size()!=6)return false;
+    chart_line_=true;export_report(dir/"budget.html");
+#ifdef _WIN32
+    print_report(dir/"budget.pdf");
+#endif
+    for(int choice=1;choice<=4;++choice){load_template(choice);prepare_report();if(chart_values_.size()<10)return false;
+        for(const auto& row:report_values_)for(const auto& value:row)if(std::holds_alternative<CellError>(value))return false;
+        export_report(dir/("template-"+std::to_string(choice)+".html"));
+        if(!save_document_to(dir/("template-"+std::to_string(choice)+".julretsu")))return false;
+    }
+    sheet_=Sheet({},&lua_);Batch b;b.cells={{{0,0},3.0}};if(!sheet_.apply(b).accepted)return false;select({0,0});prepare_report();chart_line_=true;
+    if(chart_values_.size()!=1)return false;export_report(dir/"single-value.html");
+#ifdef _WIN32
+    print_report(dir/"single-value.pdf");
+#endif
+    b.cells={{{0,0},-5.0},{{1,0},0.0},{{2,0},10.0},{{3,0},std::string("<script>alert(1)</script>")}};if(!sheet_.apply(b).accepted)return false;select({0,0});prepare_report();chart_line_=false;
+    if(chart_values_.size()!=3)return false;export_report(dir/"mixed-values.html");
+    std::ifstream in(dir/"mixed-values.html");std::string text((std::istreambuf_iterator<char>(in)),{});
+    if(text.find("<script>")!=std::string::npos||text.find("&lt;script&gt;")==std::string::npos)return false;
+    viewport_.filtered=true;viewport_.filtered_rows={0,2};prepare_report();if(chart_values_.size()!=2||report_rows_.size()!=2)return false;
+    viewport_.filtered=false;report_open_=false;load_demo();return true;
+}
+void GridUI::export_report(const std::filesystem::path& path) {
+    if(report_rows_.empty())throw std::runtime_error("No report data to export.");
+    auto escape=[](std::string_view text){std::string out;for(char c:text){switch(c){case '&':out+="&amp;";break;case '<':out+="&lt;";break;case '>':out+="&gt;";break;case '"':out+="&quot;";break;default:out+=c;}}return out;};
+    std::ostringstream html;html.imbue(std::locale::classic());
+    html<<"<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><title>"<<escape(report_title_.data())<<"</title><style>body{font:14px Arial,sans-serif;color:#18352c;margin:32px}h1{font-size:24px}svg{width:100%;height:auto;max-height:320px;break-inside:avoid}table{width:100%;border-collapse:collapse;table-layout:fixed}td{border:1px solid #aac4b7;padding:7px;overflow-wrap:anywhere;white-space:pre-wrap}thead{font-weight:bold;background:#e5f3ec}tr{break-inside:avoid}.hint{color:#456359}@media print{.hint{display:none}body{margin:0}}@page{size:A4 "<<(print_landscape_?"landscape":"portrait")<<";margin:14mm}</style><h1>"<<escape(report_title_.data())<<"</h1><p class=\"hint\">Julretsu report - use your browser's Print / Save as PDF. Chart and data are embedded in this file.</p>";
+    if(!chart_values_.empty()) {
+        auto [lo,hi]=std::minmax_element(chart_values_.begin(),chart_values_.end());double low=std::min(0.0,double(*lo)),high=std::max(0.0,double(*hi));if(low==high)high=low+1;
+        double pad=(high-low)*.05;low-=pad;high+=pad;
+        auto py=[&](double v){return 250-(v-low)/(high-low)*210;};
+        auto px=[&](std::size_t i){return 85+(i+.5)*680/chart_values_.size();};
+        auto column=to_address({0,report_first_.column+unsigned(report_column_)});column.pop_back();
+        html<<"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 300\" role=\"img\" aria-label=\"Chart of column "<<column<<"\"><title>Column "<<column<<" - "<<chart_values_.size()<<" numeric values in row order</title><rect width=\"800\" height=\"300\" fill=\"white\"/>";
+        for(int tick=0;tick<=4;++tick){double value=low+(high-low)*tick/4;html<<"<path d=\"M85 "<<py(value)<<" H765\" stroke=\"#d5e2db\"/><text x=\"78\" y=\""<<py(value)+4<<"\" text-anchor=\"end\" font-size=\"11\">"<<value<<"</text>";}
+        html<<"<path d=\"M85 "<<py(0)<<" H765\" stroke=\"#63776d\"/>";
+        if(chart_line_&&chart_values_.size()>1){html<<"<polyline fill=\"none\" stroke=\"#1e916e\" stroke-width=\"2\" points=\"";for(std::size_t i=0;i<chart_values_.size();++i)html<<px(i)<<","<<py(chart_values_[i])<<" ";html<<"\"/>";}
+        for(std::size_t i=0;i<chart_values_.size();++i){double y=py(chart_values_[i]);
+            if(chart_line_)html<<"<circle cx=\""<<px(i)<<"\" cy=\""<<y<<"\" r=\"3\" fill=\"#1e916e\"><title>"<<chart_values_[i]<<"</title></circle>";
+            else{double w=std::max(.5,680.0/chart_values_.size()*.8);html<<"<rect x=\""<<px(i)-w/2<<"\" y=\""<<std::min(y,py(0))<<"\" width=\""<<w<<"\" height=\""<<std::max(1.0,std::abs(y-py(0)))<<"\" fill=\"#1e916e\"><title>"<<chart_values_[i]<<"</title></rect>";}
+            if(i%std::max(std::size_t(1),chart_values_.size()/12)==0)html<<"<text x=\""<<px(i)<<"\" y=\"270\" text-anchor=\"middle\" font-size=\"11\">"<<i+1<<"</text>";
+        }
+        html<<"<text x=\"400\" y=\"294\" text-anchor=\"middle\" font-size=\"12\">Column "<<column<<" - numeric entries in row order (maximum 1,000)</text></svg>";
+    } else html<<"<p>No numeric values in the chosen chart column.</p>";
+    html<<"<table>";for(std::size_t r=0;r<report_rows_.size();++r){if(r==0&&print_header_)html<<"<thead>";html<<"<tr>";for(const auto& value:report_rows_[r])html<<"<td>"<<escape(value)<<"</td>";html<<"</tr>";if(r==0&&print_header_)html<<"</thead><tbody>";}if(print_header_)html<<"</tbody>";html<<"</table></html>";
+    std::ofstream out(path,std::ios::binary);out<<html.str();out.close();if(!out)throw std::runtime_error("Could not save report. Check the destination and available space.");
+}
+
+void GridUI::load_template(int choice) {
+    if(choice==0){load_demo();return;}
+    // Template replacement has already passed the existing save/discard prompt.
+    load_demo();sheet_=Sheet({},&lua_);sheets_.clear();sheets_.push_back({"Sheet 1",Sheet({},&lua_),""});current_sheet_=0;
+    script_.fill(0);viewport_.filtered=false;viewport_.filtered_rows.clear();row_selection_.clear();
+    Batch b;auto put=[&](unsigned r,unsigned c,Input value){b.cells.push_back({{r,c},std::move(value)});};
+    const char* months[]={"January","February","March","April","May","June","July","August","September","October","November","December"};
+    std::vector<std::string> headers;
+    if(choice==1){workbook_name_="Monthly sales (sample)";headers={"Month","Online sales","Store sales","Total sales","Target","Difference"};for(unsigned i=0;i<12;++i){unsigned r=i+1;auto n=std::to_string(r+1);put(r,0,std::string(months[i]));put(r,1,2400.0+i*175+(i%3)*210);put(r,2,1800.0+i*95);put(r,3,FormulaInput{"=B"+n+"+C"+n});put(r,4,5000.0);put(r,5,FormulaInput{"=D"+n+"-E"+n});}}
+    else if(choice==2){workbook_name_="Household expenses (sample)";headers={"Category","Planned","Actual","Remaining"};const char* labels[]={"Rent","Groceries","Utilities","Transport","Internet","Insurance","Dining","Fitness","Entertainment","Savings"};for(unsigned i=0;i<10;++i){unsigned r=i+1;auto n=std::to_string(r+1);put(r,0,std::string(labels[i]));put(r,1,150.0+(10-i)*95);put(r,2,125.0+(10-i)*92+(i%3)*40);put(r,3,FormulaInput{"=B"+n+"-C"+n});}}
+    else if(choice==3){workbook_name_="Inventory planning (sample)";headers={"Product","In stock","Reorder level","Unit cost","Stock value"};const char* labels[]={"Notebook","Pen set","Desk lamp","Cable kit","USB hub","Mouse pad","Monitor stand","Keyboard","Storage box","Whiteboard","Headset","Webcam"};for(unsigned i=0;i<12;++i){unsigned r=i+1;auto n=std::to_string(r+1);put(r,0,std::string(labels[i]));put(r,1,double(12+(i*17)%60));put(r,2,25.0);put(r,3,8.0+i*7.5);put(r,4,FormulaInput{"=B"+n+"*D"+n});}}
+    else{workbook_name_="Weekly project hours (sample)";headers={"Week","Design","Development","Testing","Total hours"};for(unsigned i=0;i<12;++i){unsigned r=i+1;auto n=std::to_string(r+1);put(r,0,std::string("Week ")+std::to_string(r));put(r,1,8.0+i%4);put(r,2,16.0+i%6);put(r,3,4.0+i%5);put(r,4,FormulaInput{"=SUM(B"+n+":D"+n+")"});}}
+    for(unsigned c=0;c<headers.size();++c)put(0,c,headers[c]);
+    Style heading;heading.bold=true;heading.background=0xE2F1EBFF;heading.foreground=0x155E4BFF;b.rows.push_back({0,heading});
+    auto result=sheet_.apply(b);if(!result.accepted)throw std::runtime_error(result.error->context);
+    sheet_.clear_journal();populated_=sheet_.populated_cells();modified_=true;select({1,1});viewport_.first_row=0;viewport_.first_column=0;message_="Fictional sample data. Edit and save as your own workbook.";
+}
+
+
 void GridUI::rebuild_filter() {
     viewport_.filtered_rows={0};for(const auto& [r,row]:sheet_.populated_rows())if(r&&display(sheet_.read({r,filter_column_})).find(filter_text_.data())!=std::string::npos)viewport_.filtered_rows.push_back(r);
     viewport_.first_row=0;filter_revision_=sheet_.revision();viewport_.clamp();
@@ -1086,6 +1190,7 @@ void GridUI::prepare() {
         case Action::MoveSheetLeft:sheet_action(4);break;
         case Action::MoveSheetRight:sheet_action(5);break;
         case Action::PrintReport:print_report();break;
+        case Action::ExportReport:if(auto path=workbook_dialog(true,{},native_window,L"html")){export_report(*path);message_="Report saved. Open the HTML file in your browser; Print / Save as PDF includes the chart.";}break;
         case Action::DragFill:apply_drag_fill();break;
         case Action::CellFormat:apply_cell_format();break;
         case Action::InsertRow:case Action::DeleteRow:case Action::InsertColumn:case Action::DeleteColumn: {
@@ -1120,7 +1225,7 @@ void GridUI::prepare() {
         case Action::SaveAs:save(true);break;
         case Action::Open:open();break;
         case Action::New:if(!confirm_close()) break; sheets_.clear();sheets_.push_back({"Sheet 1",Sheet({},&lua_),""});current_sheet_=0;script_[0]=0; file_path_.clear(); workbook_name_="Untitled workbook"; file_label_.clear(); editor_dirty_=false; sheet_=Sheet({},&lua_); select({0,0}); row_selection_.clear(); modified_=false; message_="New workbook. Press Ctrl+S to save locally."; break;
-        case Action::Demo:if(confirm_close()) load_demo(); break;
+        case Action::Demo:if(confirm_close()) load_template(template_choice_); break;
         default:break;
         }
         if(action_!=Action::None) { if(action_!=Action::Save&&action_!=Action::SaveAs&&action_!=Action::Open&&action_!=Action::New&&action_!=Action::Demo&&action_!=Action::ImportCsv&&action_!=Action::ExportCsv&&action_!=Action::ImportXlsx&&action_!=Action::ExportXlsx&&action_!=Action::AiSend) selection_changed_=true; action_=Action::None; }
@@ -2298,9 +2403,11 @@ void GridUI::draw() {
         ImGui::SameLine(); if(ImGui::Button("Cancel")) ImGui::CloseCurrentPopup(); ImGui::EndPopup();
     }
     if(ImGui::BeginPopupModal("Templates",nullptr,ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::TextUnformatted("Project budget\nCategories, quantities, costs and automatic totals.");
+        const char* templates[]={"Project budget","Monthly sales","Household expenses","Inventory planning","Weekly project hours"};
+        ImGui::Combo("Sample workbook",&template_choice_,templates,5);
+        ImGui::TextWrapped("Fictional sample data with formulas. Use Reports to chart the numbers.");
         ImGui::Spacing(); ImGui::TextUnformatted("You can save the current workbook before loading this template.");
-        if(ImGui::Button("Use project budget")) { action_=Action::Demo; ImGui::CloseCurrentPopup(); }
+        if(ImGui::Button("Use selected template")) { action_=Action::Demo; ImGui::CloseCurrentPopup(); }
         ImGui::SameLine(); if(ImGui::Button("Cancel")) ImGui::CloseCurrentPopup(); ImGui::EndPopup();
     }
     if(ImGui::BeginPopup("Settings")) {
