@@ -59,4 +59,10 @@ jobs:
       - name: Create a draft release with the installers
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --draft --repo "$GITHUB_REPOSITORY" --title "Julretsu ${GITHUB_REF_NAME#v}" --notes "Julretsu ${GITHUB_REF_NAME#v} installers for macOS and Linux. Add the Windows installer built with package.ps1."
+        run: |
+          # A moved tag reuses its existing draft and replaces the files.
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* --draft --repo "$GITHUB_REPOSITORY" --title "Julretsu ${GITHUB_REF_NAME#v}" --notes "Julretsu ${GITHUB_REF_NAME#v} installers for macOS and Linux. Add the Windows installer built with package.ps1."
+          fi
