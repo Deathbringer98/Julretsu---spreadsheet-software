@@ -170,6 +170,16 @@ void grouped(char* out,std::size_t capacity,double n,int decimals,const char* pr
     if(dot) for(const char* c=dot;*c;++c) put(*c);
     result[k]=0; std::snprintf(out,capacity,"%s",result);
 }
+// Rounds chart axis limits to friendly steps (1, 2, 2.5 or 5 x 10^n), so labels read 0, 1,000, 2,000.
+void nice_axis(double& low,double& high,double& step) {
+    low=std::min(0.0,low); high=std::max(0.0,high); if(high==low) high=low+1;
+    const double raw=(high-low)/4, magnitude=std::pow(10.0,std::floor(std::log10(raw))), fraction=raw/magnitude;
+    step=(fraction<=1?1:fraction<=2?2:fraction<=2.5?2.5:fraction<=5?5:10)*magnitude;
+    low=std::floor(low/step+1e-9)*step; high=std::ceil(high/step-1e-9)*step;
+}
+std::string axis_label(double value,double step) {
+    char buffer[64]; grouped(buffer,sizeof buffer,std::abs(value)<step*1e-6?0.0:value,step<1?2:0,""); return buffer;
+}
 
 Input interpret(std::string_view text) {
     if(text.empty()) return std::monostate{};
@@ -737,12 +747,12 @@ void GridUI::print_report(const std::filesystem::path& output) {
         ok=StartPage(dc)>0;if(!ok)break;++page;int y=margin;RECT heading{margin,y,margin+width,y+row_height*2};DrawTextW(dc,title.c_str(),int(title.size()),&heading,DT_SINGLELINE|DT_NOPREFIX);y+=row_height*2;
         if(page==1&&!chart_values_.empty()) {
             const int chart_height=std::min(dpi*2,height/3),chart_width=width;
-            auto [min_it,max_it]=std::minmax_element(chart_values_.begin(),chart_values_.end());double low=std::min(0.0,double(*min_it)),high=std::max(0.0,double(*max_it));if(high==low)high=low+1;
+            auto [min_it,max_it]=std::minmax_element(chart_values_.begin(),chart_values_.end());double low=*min_it,high=*max_it,step=1;nice_axis(low,high,step);
             auto py=[&](float value){return y+chart_height-int((double(value)-low)/(high-low)*chart_height);};
             int zero=py(0);MoveToEx(dc,margin,zero,nullptr);LineTo(dc,margin+chart_width,zero);
             auto brush=CreateSolidBrush(RGB(30,145,110));auto previous=SelectObject(dc,brush);
             auto pen=CreatePen(PS_SOLID,std::max(1,dpi/72),RGB(30,145,110));auto old_pen=SelectObject(dc,pen);
-            for(std::size_t i=0;i<chart_values_.size();++i){int x=margin+int(double(i)*chart_width/chart_values_.size()),xx=margin+int(double(i+1)*chart_width/chart_values_.size());int value_y=py(chart_values_[i]);if(chart_line_&&chart_values_.size()>1){if(i==0)MoveToEx(dc,x,value_y,nullptr);else LineTo(dc,x,value_y);}else Rectangle(dc,x,std::min(zero,value_y),std::max(x+1,xx-2),std::max(zero,value_y)+1);}
+            for(std::size_t i=0;i<chart_values_.size();++i){const double slot=double(chart_width)/chart_values_.size(),bar=std::min(slot*.8,chart_width/12.0);int centre=margin+int((double(i)+.5)*slot),x=centre-int(bar/2),xx=centre+int(bar/2);int value_y=py(chart_values_[i]);if(chart_line_&&chart_values_.size()>1){if(i==0)MoveToEx(dc,centre,value_y,nullptr);else LineTo(dc,centre,value_y);}else Rectangle(dc,x,std::min(zero,value_y),std::max(x+1,xx),std::max(zero,value_y)+1);}
             SelectObject(dc,old_pen);DeleteObject(pen);SelectObject(dc,previous);DeleteObject(brush);y+=chart_height+row_height;
         }
         if(offset&&print_header_){draw_row(0,y);y+=row_height;}
@@ -786,18 +796,17 @@ void GridUI::export_report(const std::filesystem::path& path) {
     std::ostringstream html;html.imbue(std::locale::classic());
     html<<"<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><title>"<<escape(report_title_.data())<<"</title><style>body{font:14px Arial,sans-serif;color:#18352c;margin:32px}h1{font-size:24px}svg{width:100%;height:auto;max-height:320px;break-inside:avoid}table{width:100%;border-collapse:collapse;table-layout:fixed}td{border:1px solid #aac4b7;padding:7px;overflow-wrap:anywhere;white-space:pre-wrap}thead{font-weight:bold;background:#e5f3ec}tr{break-inside:avoid}.hint{color:#456359}@media print{.hint{display:none}body{margin:0}}@page{size:A4 "<<(print_landscape_?"landscape":"portrait")<<";margin:14mm}</style><h1>"<<escape(report_title_.data())<<"</h1><p class=\"hint\">Julretsu report - use your browser's Print / Save as PDF. Chart and data are embedded in this file.</p>";
     if(!chart_values_.empty()) {
-        auto [lo,hi]=std::minmax_element(chart_values_.begin(),chart_values_.end());double low=std::min(0.0,double(*lo)),high=std::max(0.0,double(*hi));if(low==high)high=low+1;
-        double pad=(high-low)*.05;low-=pad;high+=pad;
+        auto [lo,hi]=std::minmax_element(chart_values_.begin(),chart_values_.end());double low=*lo,high=*hi,step=1;nice_axis(low,high,step);
         auto py=[&](double v){return 250-(v-low)/(high-low)*210;};
         auto px=[&](std::size_t i){return 85+(i+.5)*680/chart_values_.size();};
         auto column=to_address({0,report_first_.column+unsigned(report_column_)});column.pop_back();
         html<<"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 300\" role=\"img\" aria-label=\"Chart of column "<<column<<"\"><title>Column "<<column<<" - "<<chart_values_.size()<<" numeric values in row order</title><rect width=\"800\" height=\"300\" fill=\"white\"/>";
-        for(int tick=0;tick<=4;++tick){double value=low+(high-low)*tick/4;html<<"<path d=\"M85 "<<py(value)<<" H765\" stroke=\"#d5e2db\"/><text x=\"78\" y=\""<<py(value)+4<<"\" text-anchor=\"end\" font-size=\"11\">"<<value<<"</text>";}
+        for(double value=low;value<=high+step*1e-6;value+=step)html<<"<path d=\"M85 "<<py(value)<<" H765\" stroke=\"#d5e2db\"/><text x=\"78\" y=\""<<py(value)+4<<"\" text-anchor=\"end\" font-size=\"11\">"<<axis_label(value,step)<<"</text>";
         html<<"<path d=\"M85 "<<py(0)<<" H765\" stroke=\"#63776d\"/>";
         if(chart_line_&&chart_values_.size()>1){html<<"<polyline fill=\"none\" stroke=\"#1e916e\" stroke-width=\"2\" points=\"";for(std::size_t i=0;i<chart_values_.size();++i)html<<px(i)<<","<<py(chart_values_[i])<<" ";html<<"\"/>";}
         for(std::size_t i=0;i<chart_values_.size();++i){double y=py(chart_values_[i]);
             if(chart_line_)html<<"<circle cx=\""<<px(i)<<"\" cy=\""<<y<<"\" r=\"3\" fill=\"#1e916e\"><title>"<<chart_values_[i]<<"</title></circle>";
-            else{double w=std::max(.5,680.0/chart_values_.size()*.8);html<<"<rect x=\""<<px(i)-w/2<<"\" y=\""<<std::min(y,py(0))<<"\" width=\""<<w<<"\" height=\""<<std::max(1.0,std::abs(y-py(0)))<<"\" fill=\"#1e916e\"><title>"<<chart_values_[i]<<"</title></rect>";}
+            else{double w=std::clamp(680.0/chart_values_.size()*.8,.5,60.0);html<<"<rect x=\""<<px(i)-w/2<<"\" y=\""<<std::min(y,py(0))<<"\" width=\""<<w<<"\" height=\""<<std::max(1.0,std::abs(y-py(0)))<<"\" fill=\"#1e916e\"><title>"<<chart_values_[i]<<"</title></rect>";}
             if(i%std::max(std::size_t(1),chart_values_.size()/12)==0)html<<"<text x=\""<<px(i)<<"\" y=\"270\" text-anchor=\"middle\" font-size=\"11\">"<<i+1<<"</text>";
         }
         html<<"<text x=\"400\" y=\"294\" text-anchor=\"middle\" font-size=\"12\">Column "<<column<<" - numeric entries in row order (maximum 1,000)</text></svg>";
