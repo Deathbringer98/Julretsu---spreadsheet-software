@@ -1,4 +1,4 @@
-# Julretsu 1.0.1
+# Julretsu 1.1.0
 ### A native spreadsheet workbench
 
 Julretsu now includes a Windows-tested native ImGui application, a sparse C++20
@@ -10,7 +10,7 @@ locally in this Windows session.
 
 ## Start the app
 Double-click **Start Julretsu.cmd** in this folder, or open
-**release/Julretsu-1.0.1/Julretsu.exe**. Keep the supplied DLLs beside the executable.
+**release/Julretsu-1.1.0/Julretsu.exe**. Keep the supplied DLLs beside the executable.
 
 [Quick start and controls](docs/QUICKSTART.md) ·
 [Steps 3–4 acceptance report](docs/ACCEPTANCE-0.2.md) ·
@@ -37,16 +37,18 @@ This is an editable native MVP, not a complete Excel replacement.
 - CSV import/export (quoted commas, quotes, multi-line cells, formula-injection-safe export).
 - Excel .xlsx import/export: first worksheet, SUM/AVERAGE/IF and arithmetic formulas,
   bold, colours and decimal row formats, with an import preview of what carries over.
+- Interface languages: English, Korean and Japanese, picked automatically from the system language
+  and changeable under Settings; sample workbooks and reports follow the chosen language
 - Optional AI assistant: Anthropic or OpenAI-compatible providers, keys in Windows
   Credential Manager, validated edit proposals reviewed before one-step, undoable apply.
 - A portable Windows package with runtime DLLs and dependency license notices.
 
-## Installers (1.0.1)
-- **Windows:** `.\package.ps1` builds `release/Julretsu-1.0.1-Windows-Setup.exe`, a single-file per-user
+## Installers (1.1.0)
+- **Windows:** `.\package.ps1` builds `release/Julretsu-1.1.0-Windows-Setup.exe`, a single-file per-user
   installer with license page, Start menu and desktop shortcuts, `.julretsu` file association and an
   uninstaller in Settings > Apps.
-- **macOS and Linux:** the `Installers` GitHub Actions workflow builds `Julretsu-1.0.1-macOS.dmg`
-  (universal, macOS 13.3+), `Julretsu-1.0.1-linux-amd64.deb` and `Julretsu-1.0.1-linux-x86_64.tar.gz`.
+- **macOS and Linux:** the `Installers` GitHub Actions workflow builds `Julretsu-1.1.0-macOS.dmg`
+  (universal, macOS 13.3+), `Julretsu-1.1.0-linux-amd64.deb` and `Julretsu-1.1.0-linux-x86_64.tar.gz`.
   Pushing a `v*` tag attaches them to a draft GitHub release.
 - **Manual:** `docs/Julretsu-User-Manual.pdf`, generated from `docs/manual/Julretsu-User-Manual.html`
   (screenshots come from `julretsu --manual-shots <folder>`). Every installer includes it.

@@ -2,6 +2,8 @@
 #include "julretsu/WindowFrame.hpp"
 #include "julretsu/Branding.hpp"
 #include "julretsu/AllocationMetrics.hpp"
+#include "julretsu/Glyphs.hpp"
+#include "julretsu/I18n.hpp"
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <imgui_impl_glfw.h>
@@ -14,6 +16,8 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
+#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -93,31 +97,68 @@ void theme(float scale,bool dark=false) {
     }
     s.ScaleAllSizes(scale);
 }
+struct FontFace { const char* path; int index=0; };
+// Font files are read once and shared with the atlas, which is rebuilt whenever new characters appear.
+const std::vector<char>* font_file(const char* path) {
+    static std::map<std::string,std::vector<char>> files;
+    auto [entry,inserted]=files.try_emplace(path);
+    if(inserted) {
+        std::ifstream in(std::filesystem::path(std::u8string_view(reinterpret_cast<const char8_t*>(path))),std::ios::binary);
+        if(in) entry->second.assign(std::istreambuf_iterator<char>(in),{});
+    }
+    return entry->second.empty()?nullptr:&entry->second;
+}
+bool add_face(const std::vector<FontFace>& candidates,float size,const ImWchar* ranges,bool merge,float oversample=2) {
+    for(const auto& face:candidates) {
+        const auto* data=font_file(face.path); if(!data) continue;
+        ImFontConfig config; config.FontDataOwnedByAtlas=false; config.FontNo=face.index; config.MergeMode=merge;
+        config.OversampleH=int(oversample); config.OversampleV=1; config.GlyphRanges=ranges;
+        if(ImGui::GetIO().Fonts->AddFontFromMemoryTTF(const_cast<char*>(data->data()),int(data->size()),size,&config)) return true;
+    }
+    return false;
+}
 void font(float scale) {
     auto& io=ImGui::GetIO(); io.Fonts->Clear();
-    ImFontConfig config; config.SizePixels=20*scale;
+    const float size=20*scale;
+    // Latin text comes from the sans, serif and monospace fonts; Korean and Japanese characters that are
+    // actually shown are merged in from the system's CJK fonts. System fonts are used, never redistributed.
+    static std::vector<ImWchar> ranges, extra;
+    extra.clear();
+    for(const auto c:julretsu::glyphs::extra()) {
+        if(!extra.empty()&&extra.back()+1==ImWchar(c)) extra.back()=ImWchar(c); else { extra.push_back(ImWchar(c)); extra.push_back(ImWchar(c)); }
+    }
+    ranges={0x0020,0x024F,0x2010,0x205E,0x20A0,0x20BF,0x2122,0x2122,0x2190,0x2193,0xFFFD,0xFFFD};
+    ranges.insert(ranges.end(),extra.begin(),extra.end()); ranges.push_back(0); extra.push_back(0);
+    const bool korean_first=julretsu::language()!=julretsu::Language::Japanese;
 #ifdef _WIN32
-    // OS-provided font; not redistributed. ASCII branding needs no CJK font.
-    if(!io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segoeui.ttf",20*scale))
-        io.Fonts->AddFontDefault(&config);
-    if(!io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/georgia.ttf",20*scale))io.Fonts->AddFontDefault(&config);
-    if(!io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/consola.ttf",20*scale))io.Fonts->AddFontDefault(&config);
+    const std::vector<FontFace> korean{{"C:/Windows/Fonts/malgun.ttf"}}, japanese{{"C:/Windows/Fonts/YuGothM.ttc",1},{"C:/Windows/Fonts/meiryo.ttc",2},{"C:/Windows/Fonts/msgothic.ttc",1}}; // the "UI" faces with compact kana
+    const std::vector<FontFace> faces[]{{{"C:/Windows/Fonts/segoeui.ttf"}},{{"C:/Windows/Fonts/georgia.ttf"}},{{"C:/Windows/Fonts/consola.ttf"}}};
+#elif defined(__APPLE__)
+    const std::vector<FontFace> korean{{"/System/Library/Fonts/AppleSDGothicNeo.ttc"},{"/Library/Fonts/Arial Unicode.ttf"}},
+        japanese{{"/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc"},{"/System/Library/Fonts/Hiragino Sans GB.ttc"},{"/Library/Fonts/Arial Unicode.ttf"}};
+    const std::vector<FontFace> faces[]{{{"/System/Library/Fonts/Supplemental/Arial.ttf"},{"/Library/Fonts/Arial.ttf"}},
+        {{"/System/Library/Fonts/Supplemental/Georgia.ttf"},{"/Library/Fonts/Georgia.ttf"}},
+        {{"/System/Library/Fonts/Supplemental/Courier New.ttf"},{"/Library/Fonts/Courier New.ttf"}}};
 #else
-    // Sans, serif and monospace system fonts, in the same order as on Windows; ImGui's font if none exist.
-    auto add=[&](std::initializer_list<const char*> candidates) {
-        for(const char* candidate:candidates) { std::error_code error; if(std::filesystem::exists(candidate,error)&&io.Fonts->AddFontFromFileTTF(candidate,20*scale)) return; }
-        io.Fonts->AddFontDefault(&config);
-    };
-#ifdef __APPLE__
-    add({"/System/Library/Fonts/Supplemental/Arial.ttf","/Library/Fonts/Arial.ttf"});
-    add({"/System/Library/Fonts/Supplemental/Georgia.ttf","/Library/Fonts/Georgia.ttf"});
-    add({"/System/Library/Fonts/Supplemental/Courier New.ttf","/Library/Fonts/Courier New.ttf"});
-#else
-    add({"/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf","/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf","/usr/share/fonts/TTF/DejaVuSans.ttf","/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"});
-    add({"/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf","/usr/share/fonts/dejavu-serif-fonts/DejaVuSerif.ttf","/usr/share/fonts/TTF/DejaVuSerif.ttf","/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf"});
-    add({"/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf","/usr/share/fonts/dejavu-sans-mono-fonts/DejaVuSansMono.ttf","/usr/share/fonts/TTF/DejaVuSansMono.ttf","/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf"});
+    // Noto Sans CJK collections hold Japanese (0) and Korean (1) faces; distributions install them in different folders.
+    const std::vector<FontFace> korean{{"/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",1},{"/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",1},
+        {"/usr/share/fonts/google-noto-cjk/NotoSansCJK-Regular.ttc",1},{"/usr/share/fonts/truetype/nanum/NanumGothic.ttf"}},
+        japanese{{"/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",0},{"/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",0},
+        {"/usr/share/fonts/google-noto-cjk/NotoSansCJK-Regular.ttc",0},{"/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf"},{"/usr/share/fonts/truetype/fonts-japanese-gothic.ttf"}};
+    const std::vector<FontFace> faces[]{
+        {{"/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"},{"/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf"},{"/usr/share/fonts/TTF/DejaVuSans.ttf"},{"/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"}},
+        {{"/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf"},{"/usr/share/fonts/dejavu-serif-fonts/DejaVuSerif.ttf"},{"/usr/share/fonts/TTF/DejaVuSerif.ttf"},{"/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf"}},
+        {{"/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"},{"/usr/share/fonts/dejavu-sans-mono-fonts/DejaVuSansMono.ttf"},{"/usr/share/fonts/TTF/DejaVuSansMono.ttf"},{"/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf"}}};
 #endif
-#endif
+    for(const auto& face:faces) {
+        if(!add_face(face,size,ranges.data(),false)) { ImFontConfig config; config.SizePixels=size; io.Fonts->AddFontDefault(&config); }
+        if(extra.size()>1) {
+            // The first font that has a character supplies it, so the interface language decides which
+            // style shared Chinese characters and kana use.
+            add_face(korean_first?korean:japanese,size,extra.data(),true,1);
+            add_face(korean_first?japanese:korean,size,extra.data(),true,1);
+        }
+    }
 }
 void screenshot(const std::string& path,int width,int height) {
     if(width<=0||height<=0) return;
@@ -151,6 +192,7 @@ int main(int argc,char** argv) {
     bool smoke=false, benchmark=false, show=false, no_splash=false, system_titlebar=false;
     std::string manual_dir; // --manual-shots: clean screenshots of each feature for the user manual
     std::string capture="julretsu";
+    std::string language_code; // --language en|ko|ja overrides the saved choice
     std::filesystem::path open_path;
     bool check_open=false;
     for(int i=1;i<argc;++i) {
@@ -169,6 +211,7 @@ int main(int argc,char** argv) {
         else if(arg=="--visible") show=true;
         else if(arg=="--no-splash") no_splash=true;
         else if(arg=="--capture-prefix"&&i+1<argc) capture=argv[++i];
+        else if(arg=="--language"&&i+1<argc) language_code=argv[++i];
     }
     try {
 #ifdef _WIN32
@@ -178,7 +221,7 @@ int main(int argc,char** argv) {
         for(int i=1;i<argument_count;++i) {
             const std::wstring_view argument=arguments[i];
             if(argument==L"--open"&&i+1<argument_count) open_path=arguments[++i];
-            else if((argument==L"--capture-prefix"||argument==L"--manual-shots")&&i+1<argument_count) ++i;
+            else if((argument==L"--capture-prefix"||argument==L"--manual-shots"||argument==L"--language")&&i+1<argument_count) ++i;
             else if(!argument.empty()&&argument.front()!=L'-') open_path=arguments[i];
         }
         LocalFree(arguments);
@@ -212,6 +255,10 @@ int main(int argc,char** argv) {
         io.ConfigFlags|=ImGuiConfigFlags_NavEnableKeyboard;
         float sx=1,sy=1; glfwGetWindowContentScale(window.get(),&sx,&sy);
         float scale=std::clamp(std::max(sx,sy),1.0f,2.5f);
+        // Tests and manual screenshots are English unless a language is asked for.
+        julretsu::set_language(!language_code.empty()?julretsu::language_from_code(language_code):
+            (smoke||benchmark||!manual_dir.empty())?julretsu::Language::English:julretsu::GridUI::saved_language());
+        for(auto text:julretsu::translations(julretsu::language())) julretsu::glyphs::note(text);
         theme(scale); font(scale);
         if(!ImGui_ImplGlfw_InitForOpenGL(window.get(),true)) throw std::runtime_error("ImGui GLFW initialization failed.");
         gui.glfw=true;
@@ -229,9 +276,9 @@ int main(int argc,char** argv) {
             if(capture_image) screenshot(capture+"-loading.bmp",width,height);
             glfwSwapBuffers(window.get());
         };
-        if(!no_splash) loading_frame("Starting Julretsu...");
+        if(!no_splash) loading_frame(julretsu::tr("Starting Julretsu..."));
         if((!smoke&&!benchmark&&!check_open)||show) glfwShowWindow(window.get());
-        if(!no_splash) loading_frame("Preparing your worksheet...",smoke);
+        if(!no_splash) loading_frame(julretsu::tr("Preparing your worksheet..."),smoke);
         julretsu::GridUI app; app.set_scale(scale); app.brand_icon=branding.icon_texture();
 #ifdef _WIN32
         app.native_window=glfwGetWin32Window(window.get());
@@ -250,6 +297,11 @@ int main(int argc,char** argv) {
             if(restored_light.dark()) throw std::runtime_error("Light appearance preference did not survive reload");
             app.set_dark(false,false);
             std::cout<<"appearance preference round trip=PASS\n";
+            app.change_language(julretsu::Language::Japanese,true);
+            if(julretsu::GridUI::saved_language()!=julretsu::Language::Japanese) throw std::runtime_error("Language preference did not survive reload");
+            app.change_language(julretsu::Language::English,true);
+            if(julretsu::GridUI::saved_language()!=julretsu::Language::English) throw std::runtime_error("English preference did not survive reload");
+            std::cout<<"language preference round trip=PASS\n";
         }
         if(!open_path.empty()) {
             const bool opened=app.open_from(open_path);
@@ -260,12 +312,24 @@ int main(int argc,char** argv) {
             // A short minimum makes the supplied splash readable on fast starts.
             // Ready is shown honestly once setup finishes; no fake percentage.
             while(Clock::now()-splash_start<std::chrono::milliseconds(650)&&!glfwWindowShouldClose(window.get())) {
-                loading_frame("Ready");
+                loading_frame(julretsu::tr("Ready"));
                 glfwWaitEventsTimeout(0.016);
             }
         }
         if(glfwWindowShouldClose(window.get())) return 0;
         if(smoke) {
+            // Every translation must take the same printf arguments as its English text.
+            const auto problems=julretsu::translations(julretsu::Language::Korean).size()>400?julretsu::translation_problems():std::vector<std::string>{"translation table is missing"};
+            for(const auto& problem:problems) std::cerr<<"translation: "<<problem<<'\n';
+            julretsu::set_language(julretsu::Language::Korean);
+            const bool lookups=std::string(julretsu::tr("Save"))=="저장"&&std::string(julretsu::tr("Bold##smoke"))=="굵게##smoke"
+                &&julretsu::tr_text("Recovery copy failed: disk full")=="복구 사본을 만들지 못했습니다: disk full"
+                &&julretsu::trf("Apply %zu edit%s",std::size_t(3),"s")=="편집 3개 적용"&&std::string(julretsu::tr("Not in the table"))=="Not in the table";
+            julretsu::set_language(julretsu::Language::Japanese);
+            const bool japanese=std::string(julretsu::tr("Save"))=="保存";
+            julretsu::set_language(julretsu::Language::English);
+            std::cout<<"translations="<<(problems.empty()&&lookups&&japanese?"PASS":"FAIL")<<"\n";
+            if(!problems.empty()||!lookups||!japanese) return 5;
             julretsu::GridUI tool_check; tool_check.disable_recovery();
             if(!tool_check.smoke_workbook_features(capture+"-features.julretsu"))throw std::runtime_error("Advanced workbook smoke checks failed");
             std::cout<<"Cell styles, clipboard, sequences, worksheet links, multi-sheet persistence, filters and reports passed\n";
@@ -307,6 +371,7 @@ int main(int argc,char** argv) {
             }
             if(current_dark!=app.dark()) { current_dark=app.dark(); theme(scale,current_dark); }
             app.prepare();
+            if(julretsu::glyphs::take_changes()) { font(scale); ImGui_ImplOpenGL3_DestroyFontsTexture(); ImGui_ImplOpenGL3_CreateFontsTexture(); }
             ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame();
             if(!manual_dir.empty()) {
                 // Walk through the features on the example workbook, pausing a few frames for each screenshot.
@@ -377,6 +442,13 @@ int main(int argc,char** argv) {
                 if(frame==137) app.smoke_close_review();
                 if(frame==138) { app.smoke_queue_edit({1,2},"This sentence is far too long to fit inside a single spreadsheet cell"); app.smoke_queue_edit({1,3},"123456789012345678"); }
                 if(frame==139) app.jump({0,0});
+                // Korean and Japanese: the interface and a sample workbook render with real glyphs, not "?".
+                auto has_glyph=[&](unsigned c){ for(auto* font:io.Fonts->Fonts) if(!font->FindGlyphNoFallback(ImWchar(c))) return false; return true; };
+                if(frame==142) { app.change_language(julretsu::Language::Korean,false); app.load_demo(); }
+                if(frame==145) { const bool ok=has_glyph(0xD648)&&has_glyph(0xC608); std::cout<<"korean glyphs="<<ok<<"\n"; smoke_ok&=ok; }
+                if(frame==146) { app.change_language(julretsu::Language::Japanese,false); app.load_demo(); }
+                if(frame==149) { const bool ok=has_glyph(0x30DB)&&has_glyph(0x4E88); std::cout<<"japanese glyphs="<<ok<<"\n"; smoke_ok&=ok; }
+                if(frame==150) { app.change_language(julretsu::Language::English,false); app.load_demo(); }
                 if(frame==118) app.smoke_workbook_window(1);
                 if(frame==122) app.smoke_workbook_window(2);
                 if(frame==126) { app.smoke_workbook_window(0); std::cout<<"title bar="<<(app.custom_frame?"custom":"system")<<" caption_height="<<app.caption_height()<<"\n"; smoke_ok &= !app.custom_frame||app.caption_height()>0; }
@@ -469,6 +541,8 @@ int main(int argc,char** argv) {
             if(smoke&&frame==130)screenshot(capture+"-sheet-check.bmp",width,height);
             if(smoke&&frame==135)screenshot(capture+"-review.bmp",width,height);
             if(smoke&&frame==141)screenshot(capture+"-long-text.bmp",width,height);
+            if(smoke&&frame==145)screenshot(capture+"-korean.bmp",width,height);
+            if(smoke&&frame==149)screenshot(capture+"-japanese.bmp",width,height);
             if(smoke&&frame==124)screenshot(capture+"-workbook-minimized.bmp",width,height);
             if(smoke&&frame==101) screenshot(capture+"-ai-preview.bmp",width,height);
             if(smoke&&frame==1) screenshot(capture+"-light.bmp",width,height);

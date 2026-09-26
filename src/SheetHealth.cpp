@@ -1,4 +1,5 @@
 #include "julretsu/SheetHealth.hpp"
+#include "julretsu/I18n.hpp"
 #include "julretsu/WorksheetOps.hpp"
 #include <algorithm>
 #include <array>
@@ -91,14 +92,11 @@ std::optional<std::string> outlier_note(const Sheet& sheet,CellCoord coord) {
     if(others.size()<5) return std::nullopt;
     const double typical=median(others), ratio=std::abs(*n)/typical;
     if(ratio<50&&ratio>1.0/50) return std::nullopt;
-    char buffer[256];
-    char scale[32];
-    if(ratio>=1000) std::snprintf(scale,sizeof scale,"over 1,000x"); else std::snprintf(scale,sizeof scale,"about %.0fx",ratio);
-    if(ratio>=50) std::snprintf(buffer,sizeof buffer,"%s is %s, %s the typical value in column %s (%s). Check for extra digits.",
-        a1(coord).c_str(),amount(*n).c_str(),scale,column_name(coord.column).c_str(),amount(typical).c_str());
-    else std::snprintf(buffer,sizeof buffer,"%s is %s, far smaller than the typical value in column %s (%s). Check for a missing digit or decimal point.",
+    const auto scale=ratio>=1000?std::string(tr("over 1,000x")):trf("about %.0fx",ratio);
+    if(ratio>=50) return trf("%s is %s, %s the typical value in column %s (%s). Check for extra digits.",
+        a1(coord).c_str(),amount(*n).c_str(),scale.c_str(),column_name(coord.column).c_str(),amount(typical).c_str());
+    return trf("%s is %s, far smaller than the typical value in column %s (%s). Check for a missing digit or decimal point.",
         a1(coord).c_str(),amount(*n).c_str(),column_name(coord.column).c_str(),amount(typical).c_str());
-    return std::string(buffer);
 }
 std::vector<HealthIssue> check_sheet_health(const Sheet& sheet,std::size_t max_issues) {
     std::vector<HealthIssue> issues;
@@ -119,15 +117,15 @@ std::vector<HealthIssue> check_sheet_health(const Sheet& sheet,std::size_t max_i
             const auto source=std::get<FormulaInput>(up.input).source;
             if(here.formula&&!here.formula->error) {
                 if(formula_signature(*here.formula,{r,c})==pattern) continue;
-                issue.title=a1({r,c})+"'s formula differs from its neighbours";
-                issue.detail="The cells above and below follow one pattern ("+source+" in "+a1({r-1,c})+"), but "+a1({r,c})+" uses "+std::get<FormulaInput>(here.input).source+".";
+                issue.title=trf("%s's formula differs from its neighbours",a1({r,c}).c_str());
+                issue.detail=trf("The cells above and below follow one pattern (%s in %s), but %s uses %s.",source.c_str(),a1({r-1,c}).c_str(),a1({r,c}).c_str(),std::get<FormulaInput>(here.input).source.c_str());
             } else if(number_input(here)) {
-                issue.title=a1({r,c})+" is a typed number inside a column of formulas";
-                issue.detail="The cells above and below are calculated, but "+a1({r,c})+" holds a fixed "+amount(*number_input(here))+". It will not update when its inputs change.";
+                issue.title=trf("%s is a typed number inside a column of formulas",a1({r,c}).c_str());
+                issue.detail=trf("The cells above and below are calculated, but %s holds a fixed %s. It will not update when its inputs change.",a1({r,c}).c_str(),amount(*number_input(here)).c_str());
             } else continue;
             const auto repaired=adjust_references(source,1,0);
             if(!parse_formula(repaired,{}).error) {
-                issue.fix_label="Use "+repaired;
+                issue.fix_label=trf("Use %s",repaired.c_str());
                 issue.fix.cells.push_back({{r,c},FormulaInput{repaired}});
             }
             add(std::move(issue));
@@ -156,13 +154,13 @@ std::vector<HealthIssue> check_sheet_health(const Sheet& sheet,std::size_t max_i
                 if(!missed) continue;
                 HealthIssue issue; issue.kind=HealthKind::TotalMissesRows; issue.cell={r,c}; issue.serious=true;
                 const auto old_range=a1(range.first)+":"+a1(range.last), new_range=a1(range.first)+":"+a1(end);
-                issue.title=a1({r,c})+"'s "+node.op+" leaves out "+std::to_string(missed)+(vertical?(missed==1?" row":" rows"):(missed==1?" column":" columns"));
-                issue.detail="It covers "+old_range+", but "+(missed==1?a1(end)+" is a number right next to that range and is not included.":std::string("the numbers continue to ")+a1(end)+" and are not included.");
+                issue.title=vertical?trf("%s's %s leaves out %u row%s",a1({r,c}).c_str(),node.op.c_str(),missed,missed==1?"":"s"):trf("%s's %s leaves out %u column%s",a1({r,c}).c_str(),node.op.c_str(),missed,missed==1?"":"s");
+                issue.detail=missed==1?trf("It covers %s, but %s is a number right next to that range and is not included.",old_range.c_str(),a1(end).c_str()):trf("It covers %s, but the numbers continue to %s and are not included.",old_range.c_str(),a1(end).c_str());
                 auto source=std::get<FormulaInput>(cell.input).source, upper=source;
                 std::transform(upper.begin(),upper.end(),upper.begin(),[](unsigned char ch){ return char(std::toupper(ch)); });
                 if(const auto at=upper.find(old_range);at!=std::string::npos&&upper.find(old_range,at+1)==std::string::npos) {
                     source.replace(at,old_range.size(),new_range);
-                    issue.fix_label="Extend to "+new_range; issue.fix.cells.push_back({{r,c},FormulaInput{source}});
+                    issue.fix_label=trf("Extend to %s",new_range.c_str()); issue.fix.cells.push_back({{r,c},FormulaInput{source}});
                 }
                 add(std::move(issue));
             }
@@ -179,7 +177,7 @@ std::vector<HealthIssue> check_sheet_health(const Sheet& sheet,std::size_t max_i
             const double ratio=std::abs(*n)/typical; if(ratio<50&&ratio>1.0/50) continue;
             if(++reported>3) break;
             HealthIssue issue; issue.kind=HealthKind::Outlier; issue.cell={r,c};
-            issue.title=a1({r,c})+" looks out of scale ("+amount(*n)+")";
+            issue.title=trf("%s looks out of scale (%s)",a1({r,c}).c_str(),amount(*n).c_str());
             issue.detail=*outlier_note(sheet,{r,c});
             add(std::move(issue));
         }
@@ -189,9 +187,9 @@ std::vector<HealthIssue> check_sheet_health(const Sheet& sheet,std::size_t max_i
         const auto* text=std::get_if<std::string>(&cell.input); if(!text) continue;
         auto value=text_number(*text); if(!value) continue;
         HealthIssue issue; issue.kind=HealthKind::NumberAsText; issue.cell={r,c};
-        issue.title=a1({r,c})+" is a number stored as text (\""+*text+"\")";
-        issue.detail="Totals, averages and sorting skip text, so this value is silently left out of calculations.";
-        issue.fix_label="Convert to "+amount(*value); issue.fix.cells.push_back({{r,c},*value});
+        issue.title=trf("%s is a number stored as text (\"%s\")",a1({r,c}).c_str(),text->c_str());
+        issue.detail=tr("Totals, averages and sorting skip text, so this value is silently left out of calculations.");
+        issue.fix_label=trf("Convert to %s",amount(*value).c_str()); issue.fix.cells.push_back({{r,c},*value});
         add(std::move(issue));
     }
     // 5. A single blank row splitting a table: sorting and filtering stop at the gap.
@@ -208,9 +206,9 @@ std::vector<HealthIssue> check_sheet_health(const Sheet& sheet,std::size_t max_i
         if(shared<2||!shared_numbers) continue; // different columns or a new heading: not the same table
         const auto blank=it->first+1;
         HealthIssue issue; issue.kind=HealthKind::BlankRowInTable; issue.cell={blank,it->second.begin()->first};
-        issue.title="Row "+std::to_string(blank+1)+" is blank inside a table";
-        issue.detail="Rows "+std::to_string(it->first+1)+" and "+std::to_string(next->first+1)+" hold the same kind of data. Sorting and filtering stop at the gap, which can split or scramble the table.";
-        issue.fix_label="Delete blank row "+std::to_string(blank+1); issue.delete_row=true; issue.row=blank;
+        issue.title=trf("Row %u is blank inside a table",unsigned(blank+1));
+        issue.detail=trf("Rows %u and %u hold the same kind of data. Sorting and filtering stop at the gap, which can split or scramble the table.",unsigned(it->first+1),unsigned(next->first+1));
+        issue.fix_label=trf("Delete blank row %u",unsigned(blank+1)); issue.delete_row=true; issue.row=blank;
         add(std::move(issue));
     }
     std::stable_sort(issues.begin(),issues.end(),[](const HealthIssue& a,const HealthIssue& b){ return a.serious>b.serious; });

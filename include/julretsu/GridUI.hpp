@@ -4,6 +4,7 @@
 #include "Ai.hpp"
 #include "WindowFrame.hpp"
 #include "SheetHealth.hpp"
+#include "I18n.hpp"
 #include <optional>
 #include <set>
 #include <functional>
@@ -156,6 +157,9 @@ class GridUI {
     void select(CellCoord,bool extend=false);
     void draw_grid(float width,float height);
     void draw_script_panel(float height);
+    // Characters shown this frame that the font texture may not have yet.
+    void note_glyphs();
+    bool journal_noted_=false;
 public:
     void* native_window{};
     bool save(bool save_as=false);
@@ -169,6 +173,9 @@ public:
     GridUI();
     bool dark() const noexcept { return dark_; }
     void set_dark(bool dark, bool remember=true);
+    // The language picked in Settings, or the system language on first run.
+    [[nodiscard]] static Language saved_language();
+    void change_language(Language language, bool remember=true);
     void prepare(); // Mutations/recalculation happen only here, before NewFrame.
     void draw();
     void set_scale(float scale);

@@ -1,4 +1,5 @@
 #include "julretsu/Ai.hpp"
+#include "julretsu/I18n.hpp"
 #include "julretsu/Json.hpp"
 #include "julretsu/Csv.hpp"
 #include "julretsu/WorkbookFile.hpp"
@@ -176,7 +177,7 @@ HttpRequest build_ai_request(const AiSettings& settings,std::string_view key,std
 std::string extract_ai_text(const AiSettings& settings,const HttpResponse& response) {
     if(response.status!=200) {
         const auto detail=provider_message(response.body);
-        auto with=[&](std::string text){ return detail.empty()?text:text+"\n\nProvider message: "+detail; };
+        auto with=[&](const char* text){ return detail.empty()?std::string(tr(text)):std::string(tr(text))+"\n\n"+tr("Provider message: ")+detail; };
         switch(response.status) {
         case 401: throw std::runtime_error(with("The API key was rejected. Check it in AI connection settings."));
         case 403: throw std::runtime_error(with("This API key does not have access to that model or endpoint."));
@@ -185,8 +186,8 @@ std::string extract_ai_text(const AiSettings& settings,const HttpResponse& respo
         case 413: throw std::runtime_error("The request was too large. Select a smaller part of the sheet.");
         case 429: throw std::runtime_error(with("Rate limit or quota reached. Wait a moment and try again."));
         default:
-            if(response.status>=500) throw std::runtime_error("The AI provider is temporarily unavailable (HTTP "+std::to_string(response.status)+"). Try again shortly.");
-            throw std::runtime_error(with("The AI request failed (HTTP "+std::to_string(response.status)+")."));
+            if(response.status>=500) throw std::runtime_error(trf("The AI provider is temporarily unavailable (HTTP %d). Try again shortly.",int(response.status)));
+            throw std::runtime_error(detail.empty()?trf("The AI request failed (HTTP %d).",int(response.status)):trf("The AI request failed (HTTP %d).",int(response.status))+"\n\n"+tr("Provider message: ")+detail);
         }
     }
     Json j;
@@ -207,7 +208,7 @@ std::string extract_ai_text(const AiSettings& settings,const HttpResponse& respo
     const auto& choice=choices->array()->front();
     if(auto finish=choice.find("finish_reason");finish&&finish->string()&&*finish->string()=="length") throw std::runtime_error("The AI response was cut off. Ask for a smaller change.");
     auto message=choice.find("message"); if(!message) throw std::runtime_error("The AI response contained no proposal.");
-    if(auto refusal=message->find("refusal");refusal&&refusal->string()) throw std::runtime_error("The model declined this request: "+*refusal->string());
+    if(auto refusal=message->find("refusal");refusal&&refusal->string()) throw std::runtime_error(tr("The model declined this request: ")+*refusal->string());
     auto content=message->find("content");
     if(!content||!content->string()||content->string()->empty()) throw std::runtime_error("The AI response contained no proposal.");
     return *content->string();
@@ -231,33 +232,33 @@ AiProposal parse_ai_proposal(std::string_view text,const Sheet& sheet,std::size_
     if(!valid_utf8(proposal.summary)) proposal.summary="(summary omitted: unsupported characters)";
     auto edits=j.find("edits");
     if(!edits||!edits->array()) throw std::runtime_error("The AI reply had no edit list. Try again.");
-    if(edits->array()->size()>max_edits) throw std::runtime_error("The AI proposed more than "+std::to_string(max_edits)+" edits. Ask for a smaller change.");
+    if(edits->array()->size()>max_edits) throw std::runtime_error(trf("The AI proposed more than %zu edits. Ask for a smaller change.",std::size_t(max_edits)));
     std::set<CellCoord> seen; const Limits limits;
     for(const auto& item:*edits->array()) {
         auto field=[&](const char* name)->std::string { auto f=item.find(name); return f&&f->string()?*f->string():std::string(); };
         const auto address=field("cell"),kind=field("kind"),value=field("value");
-        auto skip=[&](const std::string& why){ proposal.warnings.push_back("Skipped "+(address.empty()?std::string("an edit"):address)+": "+why); };
+        auto skip=[&](const std::string& why){ proposal.warnings.push_back(trf("Skipped %s: %s",address.empty()?tr("an edit"):address.c_str(),why.c_str())); };
         auto parsed=from_a1(address); auto coord=std::get_if<CellCoord>(&parsed);
-        if(!coord) { skip("not a valid cell address."); continue; }
-        if(!seen.insert(*coord).second) { skip("the cell appears more than once."); continue; }
-        if(!valid_utf8(value)||value.size()>limits.text_bytes) { skip("the value is too long or has unsupported characters."); continue; }
+        if(!coord) { skip(tr("not a valid cell address.")); continue; }
+        if(!seen.insert(*coord).second) { skip(tr("the cell appears more than once.")); continue; }
+        if(!valid_utf8(value)||value.size()>limits.text_bytes) { skip(tr("the value is too long or has unsupported characters.")); continue; }
         AiEdit edit; edit.coord=*coord; edit.address=a1(*coord);
         if(kind=="number") {
             double n{}; auto [end,e]=parse_double(value.data(),value.data()+value.size(),n);
-            if(value.empty()||e!=std::errc{}||end!=value.data()+value.size()||!std::isfinite(n)) { skip("\""+value+"\" is not a number."); continue; }
+            if(value.empty()||e!=std::errc{}||end!=value.data()+value.size()||!std::isfinite(n)) { skip(trf("\"%s\" is not a number.",value.c_str())); continue; }
             edit.input=n;
         } else if(kind=="boolean") {
-            const auto v=lower(value); if(v!="true"&&v!="false") { skip("\""+value+"\" is not TRUE or FALSE."); continue; }
+            const auto v=lower(value); if(v!="true"&&v!="false") { skip(trf("\"%s\" is not TRUE or FALSE.",value.c_str())); continue; }
             edit.input=v=="true";
         } else if(kind=="formula") {
-            if(value.empty()||value.front()!='=') { skip("formulas must start with '='."); continue; }
+            if(value.empty()||value.front()!='=') { skip(tr("formulas must start with '='.")); continue; }
             auto formula=parse_formula(value,limits);
-            if(formula.error) { skip("formula "+value+" is not valid in Julretsu."); continue; }
+            if(formula.error) { skip(trf("formula %s is not valid in Julretsu.",value.c_str())); continue; }
             edit.lua=std::any_of(formula.nodes.begin(),formula.nodes.end(),[](const AstNode& n){ return n.kind==NodeKind::Call&&n.op=="LUA"; });
             edit.input=FormulaInput{value};
         } else if(kind=="text") edit.input=value;
         else if(kind=="clear") edit.input=std::monostate{};
-        else { skip("unknown edit kind."); continue; }
+        else { skip(tr("unknown edit kind.")); continue; }
         if(edit.lua) edit.selected=false;
         proposal.edits.push_back(std::move(edit));
     }
@@ -344,7 +345,7 @@ std::string network_error(DWORD code) {
         return "Could not reach the AI provider. Check your internet connection and the endpoint URL.";
     case ERROR_WINHTTP_SECURE_FAILURE: return "A secure connection to the AI provider could not be established.";
     case ERROR_WINHTTP_OPERATION_CANCELLED: return "Request cancelled.";
-    default: return "The AI request failed (network error "+std::to_string(code)+").";
+    default: return trf("The AI request failed (network error %lu).",static_cast<unsigned long>(code));
     }
 }
 void run(const std::shared_ptr<AiSession::State>& state,HttpRequest request) {

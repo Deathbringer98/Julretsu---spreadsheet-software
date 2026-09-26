@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Julretsu 1.0.1 User Manual</title>
+<title>Julretsu 1.1.0 User Manual</title>
 <style>
   @page { size: Letter; margin: 0.75in 0.8in 0.8in 0.8in; }
   :root { --green: #155E4B; --green-soft: #E2F1EB; --ink: #1E2A33; --muted: #5B6770; --line: #D6E0E2; --amber: #B26A00; }
@@ -54,7 +54,7 @@
   <h1>Julretsu</h1>
   <div class="subtitle">User Manual</div>
   <div class="subtitle">The spreadsheet that catches your mistakes before they cost you.</div>
-  <div class="edition">Version 1.0.1<br>Circuitspecter Studio<br>Copyright (c) 2026 Matthew Menchinton &amp; Circuitspecter Studio</div>
+  <div class="edition">Version 1.1.0<br>Circuitspecter Studio<br>Copyright (c) 2026 Matthew Menchinton &amp; Circuitspecter Studio</div>
 </section>
 
 <h2 style="break-before: page">Contents</h2>
@@ -74,7 +74,7 @@
   <li>Charts, reports and PDF</li>
   <li>Lua macros</li>
   <li>The AI assistant (optional)</li>
-  <li>Views, themes and the workbook window</li>
+  <li>Language, views and themes</li>
   <li>Keyboard shortcuts</li>
   <li>Troubleshooting</li>
   <li>Uninstalling Julretsu</li>
@@ -92,24 +92,25 @@
   <li>Format cells with fonts, colours, borders, currency, percentages and dates.</li>
   <li>Open and save CSV files and Microsoft Excel <code>.xlsx</code> workbooks.</li>
   <li>Turn a selection into a bar or line chart, export it as a report, print it, or save it as a PDF.</li>
+  <li>Work in English, Korean or Japanese, and type any of them into your cells.</li>
   <li>Automate repetitive edits with small Lua macros.</li>
   <li>Optionally ask an AI model to propose edits, which you review before anything changes.</li>
 </ul>
 <div class="tip"><b>Tip.</b> Julretsu opens with an example project budget. Every screenshot in this manual uses that example, so you can follow along.</div>
 
 <h2>2. Installing Julretsu</h2>
-<p>Download the installer for your computer from the Julretsu website. Julretsu 1.0.1 comes in these packages:</p>
+<p>Download the installer for your computer from the Julretsu website. Julretsu 1.1.0 comes in these packages:</p>
 <table>
   <tr><th>Computer</th><th>File</th><th>Requirements</th></tr>
-  <tr><td>Windows</td><td><code>Julretsu-1.0.1-Windows-Setup.exe</code></td><td>Windows 10 or 11 (64 bit), graphics that support OpenGL 3.3</td></tr>
-  <tr><td>Mac</td><td><code>Julretsu-1.0.1-macOS.dmg</code></td><td>macOS 13.3 Ventura or later, Apple silicon or Intel</td></tr>
-  <tr><td>Linux (Ubuntu, Debian, Mint)</td><td><code>Julretsu-1.0.1-linux-amd64.deb</code></td><td>64 bit Intel or AMD, a desktop with X11 or XWayland</td></tr>
-  <tr><td>Linux (any distribution)</td><td><code>Julretsu-1.0.1-linux-x86_64.tar.gz</code></td><td>Same as above; no installation needed</td></tr>
+  <tr><td>Windows</td><td><code>Julretsu-1.1.0-Windows-Setup.exe</code></td><td>Windows 10 or 11 (64 bit), graphics that support OpenGL 3.3</td></tr>
+  <tr><td>Mac</td><td><code>Julretsu-1.1.0-macOS.dmg</code></td><td>macOS 13.3 Ventura or later, Apple silicon or Intel</td></tr>
+  <tr><td>Linux (Ubuntu, Debian, Mint)</td><td><code>Julretsu-1.1.0-linux-amd64.deb</code></td><td>64 bit Intel or AMD, a desktop with X11 or XWayland</td></tr>
+  <tr><td>Linux (any distribution)</td><td><code>Julretsu-1.1.0-linux-x86_64.tar.gz</code></td><td>Same as above; no installation needed</td></tr>
 </table>
 
 <h3>Windows</h3>
 <ol class="steps">
-  <li>Double-click <b>Julretsu-1.0.1-Windows-Setup.exe</b>.</li>
+  <li>Double-click <b>Julretsu-1.1.0-Windows-Setup.exe</b>.</li>
   <li>Read the license, tick <b>I accept the Julretsu Software License</b>, and click <b>Next</b>.</li>
   <li>Choose where to install Julretsu. The suggested folder is inside your own user folder, so you do not need administrator permission.</li>
   <li>Choose your options: a Start menu entry, a desktop shortcut, and whether Julretsu should open <code>.julretsu</code> workbooks when you double-click them.</li>
@@ -123,7 +124,7 @@
 
 <h3>Mac</h3>
 <ol class="steps">
-  <li>Double-click <b>Julretsu-1.0.1-macOS.dmg</b> to open it.</li>
+  <li>Double-click <b>Julretsu-1.1.0-macOS.dmg</b> to open it.</li>
   <li>Drag <b>Julretsu</b> onto the <b>Applications</b> folder shown in the same window.</li>
   <li>Open your Applications folder and start Julretsu.</li>
 </ol>
@@ -131,7 +132,7 @@
 
 <h3>Linux</h3>
 <p><b>Ubuntu, Debian, Linux Mint and similar:</b> double-click the <code>.deb</code> file to install it with your software centre, or run this command in the folder where you downloaded it:</p>
-<p><code>sudo apt install ./Julretsu-1.0.1-linux-amd64.deb</code></p>
+<p><code>sudo apt install ./Julretsu-1.1.0-linux-amd64.deb</code></p>
 <p>Julretsu then appears in your applications menu, and <code>.julretsu</code> files open in Julretsu.</p>
 <p><b>Other distributions:</b> extract the <code>.tar.gz</code> file anywhere you like and run <code>bin/julretsu</code> inside the extracted folder.</p>
 <div class="note"><b>Note.</b> On Linux, Julretsu uses the desktop's own file dialogs. If you see a message asking for zenity or kdialog, install one of them, for example <code>sudo apt install zenity</code>.</div>
@@ -384,7 +385,13 @@
 </ul>
 <div class="note"><b>Note.</b> AI connections are currently available in the Windows version of Julretsu.</div>
 
-<h2>15. Views, themes and the workbook window</h2>
+<h2>15. Language, views and themes</h2>
+<h3>Choosing a language</h3>
+<p>Julretsu speaks English, Korean and Japanese. The first time you start it, it follows the language of your computer. To change it, click <b>Settings</b> in the navigation bar and pick a language under <b>Language</b>, or use <b>View, Language</b>. Your choice is remembered on this device.</p>
+<figure><img src="images/language-korean.png" alt="Julretsu in Korean"><figcaption>The same workbook with the interface set to Korean</figcaption></figure>
+<p>The language applies to menus, buttons, messages, the sheet check, exported reports and new sample workbooks. Your own cell contents are never translated, and neither are workbooks you already saved.</p>
+<p>You can type Korean and Japanese into any cell in any language setting, using your usual input method. Julretsu loads the characters it needs from the fonts installed on your computer, so text stays sharp at every zoom level.</p>
+<div class="note"><b>Note.</b> On Linux, install a CJK font such as Noto Sans CJK (on Ubuntu or Debian: <code>sudo apt install fonts-noto-cjk</code>) so Korean and Japanese characters can be drawn. Windows and macOS already include them.</div>
 <h3>Dark mode</h3>
 <p>Click <b>Dark mode</b> at the top right, or use <b>View, Dark appearance</b>. Julretsu remembers your choice.</p>
 <figure><img src="images/dark-mode.png" alt="Dark mode"><figcaption>Julretsu in dark mode</figcaption></figure>
@@ -447,7 +454,7 @@
 <p>Julretsu is free to use under the Julretsu Software License. You may install and use it for personal, educational and business work, and the workbooks you create belong to you. Julretsu itself remains the property of Matthew Menchinton and Circuitspecter Studio. It is not open source, and you may not sell, redistribute or modify it. The full license is shown in the installer and included as the <code>LICENSE</code> file.</p>
 <p>Julretsu includes third party components, each under its own license, listed in <code>THIRD_PARTY_NOTICES.md</code>: Dear ImGui, GLFW, Lua, sol2, stb, miniz and pugixml.</p>
 <p>For questions or permission requests, contact the owner through <b>github.com/Deathbringer98</b>.</p>
-<p style="margin-top:30pt;color:var(--muted)">Julretsu 1.0.1 User Manual. Copyright (c) 2026 Matthew Menchinton &amp; Circuitspecter Studio. All rights reserved.</p>
+<p style="margin-top:30pt;color:var(--muted)">Julretsu 1.1.0 User Manual. Copyright (c) 2026 Matthew Menchinton &amp; Circuitspecter Studio. All rights reserved.</p>
 
 </body>
 </html>
