@@ -1,4 +1,4 @@
-# Julretsu 1.1.0
+# Julretsu 1.2.0
 ### ネイティブのスプレッドシート ワークベンチ
 
 [English](README.md) · [한국어](README.ko.md) · **日本語**
@@ -13,7 +13,7 @@ Julretsu は無料で使えますが、所有権は Matthew Menchinton にあり
 
 ## アプリの起動
 このフォルダーの **Start Julretsu.cmd** をダブルクリックするか、
-**release/Julretsu-1.1.0/Julretsu.exe** を実行します。付属の DLL は実行ファイルと同じ場所に置いてください。
+**release/Julretsu-1.2.0/Julretsu.exe** を実行します。付属の DLL は実行ファイルと同じ場所に置いてください。
 
 [クイック スタートと操作](docs/QUICKSTART.md) ·
 [Lua の仕様](docs/LUA.md) ·
@@ -49,13 +49,13 @@ Julretsu は無料で使えますが、所有権は Matthew Menchinton にあり
   保管されるキー、検証済みの編集提案を確認してから 1 回の操作で適用し、元に戻せます。
 - ランタイム DLL と依存ライブラリのライセンス表記を含むポータブルな Windows パッケージ。
 
-## インストーラー (1.1.0)
-- **Windows:** `.\package.ps1` が `release/Julretsu-1.1.0-Windows-Setup.exe` を作成します。
+## インストーラー (1.2.0)
+- **Windows:** `.\package.ps1` が `release/Julretsu-1.2.0-Windows-Setup.exe` を作成します。
   ライセンス ページ、スタート メニューとデスクトップのショートカット、`.julretsu` の関連付け、
   設定 > アプリから使えるアンインストーラーを備えた、ユーザー単位の単一ファイル インストーラーです。
-- **macOS と Linux:** `Installers` の GitHub Actions ワークフローが `Julretsu-1.1.0-macOS.dmg`
-  (ユニバーサル、macOS 13.3 以降)、`Julretsu-1.1.0-linux-amd64.deb`、
-  `Julretsu-1.1.0-linux-x86_64.tar.gz` を作成します。`v*` タグを push すると下書きリリースに添付されます。
+- **macOS と Linux:** `Installers` の GitHub Actions ワークフローが `Julretsu-1.2.0-macOS.dmg`
+  (ユニバーサル、macOS 13.3 以降)、`Julretsu-1.2.0-linux-amd64.deb`、
+  `Julretsu-1.2.0-linux-x86_64.tar.gz` を作成します。`v*` タグを push すると下書きリリースに添付されます。
 - **マニュアル:** `docs/Julretsu-User-Manual.pdf` (英語)、`docs/Julretsu-User-Manual-ko.pdf` (韓国語)、
   `docs/Julretsu-User-Manual-ja.pdf` (日本語)。`docs/manual/` の HTML から生成し、画面写真は
   `julretsu --manual-shots <フォルダー> --language ja` で作成します。どのインストーラーにも 3 つとも含まれます。

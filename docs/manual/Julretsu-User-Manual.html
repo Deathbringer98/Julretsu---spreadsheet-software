@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Julretsu 1.1.0 User Manual</title>
+<title>Julretsu 1.2.0 User Manual</title>
 <style>
   @page { size: Letter; margin: 0.75in 0.8in 0.8in 0.8in; }
   :root { --green: #155E4B; --green-soft: #E2F1EB; --ink: #1E2A33; --muted: #5B6770; --line: #D6E0E2; --amber: #B26A00; }
@@ -54,7 +54,7 @@
   <h1>Julretsu</h1>
   <div class="subtitle">User Manual</div>
   <div class="subtitle">The spreadsheet that catches your mistakes before they cost you.</div>
-  <div class="edition">Version 1.1.0<br>Circuitspecter Studio<br>Copyright (c) 2026 Matthew Menchinton &amp; Circuitspecter Studio</div>
+  <div class="edition">Version 1.2.0<br>Circuitspecter Studio<br>Copyright (c) 2026 Matthew Menchinton &amp; Circuitspecter Studio</div>
 </section>
 
 <h2 style="break-before: page">Contents</h2>
@@ -99,18 +99,18 @@
 <div class="tip"><b>Tip.</b> Julretsu opens with an example project budget. Every screenshot in this manual uses that example, so you can follow along.</div>
 
 <h2>2. Installing Julretsu</h2>
-<p>Download the installer for your computer from the Julretsu website. Julretsu 1.1.0 comes in these packages:</p>
+<p>Download the installer for your computer from the Julretsu website. Julretsu 1.2.0 comes in these packages:</p>
 <table>
   <tr><th>Computer</th><th>File</th><th>Requirements</th></tr>
-  <tr><td>Windows</td><td><code>Julretsu-1.1.0-Windows-Setup.exe</code></td><td>Windows 10 or 11 (64 bit), graphics that support OpenGL 3.3</td></tr>
-  <tr><td>Mac</td><td><code>Julretsu-1.1.0-macOS.dmg</code></td><td>macOS 13.3 Ventura or later, Apple silicon or Intel</td></tr>
-  <tr><td>Linux (Ubuntu, Debian, Mint)</td><td><code>Julretsu-1.1.0-linux-amd64.deb</code></td><td>64 bit Intel or AMD, a desktop with X11 or XWayland</td></tr>
-  <tr><td>Linux (any distribution)</td><td><code>Julretsu-1.1.0-linux-x86_64.tar.gz</code></td><td>Same as above; no installation needed</td></tr>
+  <tr><td>Windows</td><td><code>Julretsu-1.2.0-Windows-Setup.exe</code></td><td>Windows 10 or 11 (64 bit), graphics that support OpenGL 3.3</td></tr>
+  <tr><td>Mac</td><td><code>Julretsu-1.2.0-macOS.dmg</code></td><td>macOS 13.3 Ventura or later, Apple silicon or Intel</td></tr>
+  <tr><td>Linux (Ubuntu, Debian, Mint)</td><td><code>Julretsu-1.2.0-linux-amd64.deb</code></td><td>64 bit Intel or AMD, a desktop with X11 or XWayland</td></tr>
+  <tr><td>Linux (any distribution)</td><td><code>Julretsu-1.2.0-linux-x86_64.tar.gz</code></td><td>Same as above; no installation needed</td></tr>
 </table>
 
 <h3>Windows</h3>
 <ol class="steps">
-  <li>Double-click <b>Julretsu-1.1.0-Windows-Setup.exe</b>.</li>
+  <li>Double-click <b>Julretsu-1.2.0-Windows-Setup.exe</b>.</li>
   <li>Read the license, tick <b>I accept the Julretsu Software License</b>, and click <b>Next</b>.</li>
   <li>Choose where to install Julretsu. The suggested folder is inside your own user folder, so you do not need administrator permission.</li>
   <li>Choose your options: a Start menu entry, a desktop shortcut, and whether Julretsu should open <code>.julretsu</code> workbooks when you double-click them.</li>
@@ -124,7 +124,7 @@
 
 <h3>Mac</h3>
 <ol class="steps">
-  <li>Double-click <b>Julretsu-1.1.0-macOS.dmg</b> to open it.</li>
+  <li>Double-click <b>Julretsu-1.2.0-macOS.dmg</b> to open it.</li>
   <li>Drag <b>Julretsu</b> onto the <b>Applications</b> folder shown in the same window.</li>
   <li>Open your Applications folder and start Julretsu.</li>
 </ol>
@@ -132,7 +132,7 @@
 
 <h3>Linux</h3>
 <p><b>Ubuntu, Debian, Linux Mint and similar:</b> double-click the <code>.deb</code> file to install it with your software centre, or run this command in the folder where you downloaded it:</p>
-<p><code>sudo apt install ./Julretsu-1.1.0-linux-amd64.deb</code></p>
+<p><code>sudo apt install ./Julretsu-1.2.0-linux-amd64.deb</code></p>
 <p>Julretsu then appears in your applications menu, and <code>.julretsu</code> files open in Julretsu.</p>
 <p><b>Other distributions:</b> extract the <code>.tar.gz</code> file anywhere you like and run <code>bin/julretsu</code> inside the extracted folder.</p>
 <div class="note"><b>Note.</b> On Linux, Julretsu uses the desktop's own file dialogs. If you see a message asking for zenity or kdialog, install one of them, for example <code>sudo apt install zenity</code>.</div>
@@ -283,6 +283,17 @@
 <h3>Freezing headings</h3>
 <p>On the <b>View</b> menu choose <b>Freeze first row</b>, <b>Freeze first column</b>, or both, so your headings stay in view while you scroll.</p>
 
+<h3>Structured tables</h3>
+<p>A structured table keeps a block of data together, so that it grows correctly. Select your header row and at least one data row, then choose <b>Data, Structured tables</b>, give the table a name and click <b>Create table from selection</b>. Tick <b>Include a totals row</b> to have Julretsu add and maintain a total under each numeric column.</p>
+<figure><img src="images/tables.png" alt="Structured tables"><figcaption>Turning a selection into a structured table</figcaption></figure>
+<ul>
+  <li>New rows inherit the formulas, formatting and validation rules of the row above, so a price or total column keeps calculating.</li>
+  <li>A table with a totals row grows with <b>Add table row</b>, which inserts the new row above the total and extends the total to cover it.</li>
+  <li>A table without a totals row also grows on its own when you type in the first empty row directly below it.</li>
+  <li><b>Remove table definition</b> stops the automatic behaviour and keeps every cell, format and rule as it is. Undo restores the definition.</li>
+</ul>
+<div class="note"><b>Note.</b> Headers must be filled in and different from each other, tables cannot overlap, and one table covers at most 100,000 cells. Remove a table definition before inserting or deleting rows and columns, and use Add table row to extend it instead.</div>
+
 <h2>8. Working with several worksheets</h2>
 <p>A workbook can hold up to 64 worksheets. Click the sheet button at the bottom left of the grid to switch sheets, or choose <b>Workbook, Manage sheets</b> to add, duplicate, rename, reorder or delete them.</p>
 <p>To use a value from another sheet, use <code>SHEET</code> with the sheet name and cell address in quotes, for example <code>=SHEET("Q1 Sales","B12")</code>. If you rename a sheet, update the name inside your formulas as well.</p>
@@ -296,14 +307,26 @@
 <h3>Automatic recovery</h3>
 <p>After a minute of unsaved work, Julretsu quietly keeps a recovery copy and refreshes it every minute. If Julretsu or your computer closes unexpectedly, the next time you start Julretsu it offers to restore that copy. Choose <b>Restore</b>, then save the workbook with <b>Save As</b>. The recovery copy is removed whenever you save or close Julretsu normally. You can turn it off, or open it manually, from the <b>Workbook</b> menu.</p>
 
+<h3>Restore points</h3>
+<p>A restore point is a snapshot of the whole workbook that you can go back to later. Choose <b>Edit, Restore points</b>, or the <b>Restore points</b> button on the <b>Review</b> tab. Save the workbook first, then type a name and click <b>Create restore point</b>.</p>
+<figure><img src="images/restore-points.png" alt="Restore points"><figcaption>Restore points, with a preview of what changed</figcaption></figure>
+<ol class="steps">
+  <li>Select a point in the list to see what changed since then: how many cells differ, and which worksheets, formats or rules changed.</li>
+  <li>Click <b>Restore selected version</b>. Julretsu first saves a safety copy of your current work, called <b>Before restore</b>.</li>
+  <li>Check the result, then save to keep it. If it was not what you wanted, restore the safety copy instead.</li>
+</ol>
+<p>Julretsu also takes a point named <b>Before save</b> each time you save, so a bad afternoon of edits is never the only copy you have.</p>
+<div class="note"><b>Note.</b> Points are kept in a history folder beside the workbook file, so move that folder with the file. Julretsu keeps the last 20 automatic points and up to 100 named ones.</div>
+
 <h2>10. CSV and Excel files</h2>
 <h3>CSV files</h3>
 <p>Use <b>File, Import CSV</b> and <b>File, Export CSV</b>. Julretsu reads and writes UTF-8 CSV files, including values that contain commas, quotes or several lines. When importing, numbers and TRUE or FALSE are recognised and everything else becomes text. Formulas in a CSV file are never run.</p>
 <p>Exported CSV files contain calculated values. Text that starts with <code>=</code>, <code>+</code>, <code>-</code> or <code>@</code> is protected with a leading apostrophe, so another spreadsheet program will not run it as a formula.</p>
 <h3>Excel workbooks</h3>
-<p><b>File, Import Excel</b> reads the first worksheet of an <code>.xlsx</code> file. Choose <b>cached values</b> to bring in the results Excel last calculated, or <b>supported formulas</b> to keep arithmetic, comparisons, <code>SUM</code>, <code>AVERAGE</code> and <code>IF</code> as live formulas. Before anything loads, Julretsu shows exactly what will and will not come across.</p>
-<p><b>File, Export Excel</b> saves the current worksheet as an <code>.xlsx</code> file with its supported formulas, bold text, colours and decimal row formats.</p>
-<div class="note"><b>Note.</b> Excel features such as merged cells, charts, column widths, comments and other worksheets are not imported or exported. Keep a <code>.julretsu</code> copy of your work for full fidelity.</div>
+<p><b>File, Import Excel</b> reads every worksheet of an <code>.xlsx</code> file, with each cell's own formatting and any validation rules it can support. Choose <b>cached values</b> to bring in the results Excel last calculated, or <b>supported formulas</b> to keep arithmetic, comparisons, <code>SUM</code>, <code>AVERAGE</code> and <code>IF</code> as live formulas. References to another sheet arrive as <code>SHEET</code> formulas. Before anything loads, Julretsu shows exactly what will and will not come across, sheet by sheet.</p>
+<p><b>File, Export Excel</b> saves the whole workbook as an <code>.xlsx</code> file: every worksheet, its supported formulas, cell formatting, and dropdown, number and date rules that Excel understands. Formulas Julretsu cannot express in Excel are written as their calculated values, and the message afterwards says how many.</p>
+<div class="note"><b>Note.</b> Excel has its own limits, so sheet names must be unique and at most 31 characters, dropdown lists must fit 255 characters without commas or quotes, and validation ranges must not overlap. Julretsu tells you which rule to change rather than dropping it quietly.</div>
+<div class="note"><b>Note.</b> Excel features such as merged cells, charts, column widths and comments are not imported or exported, and workbooks using the 1904 date system are not supported. Keep a <code>.julretsu</code> copy of your work for full fidelity.</div>
 
 <h2>11. The safety net</h2>
 <p>Julretsu looks out for the everyday mistakes behind costly spreadsheet errors. It never blocks you; it explains what looks wrong and lets you decide.</p>
@@ -334,6 +357,24 @@
 <figure><img src="images/cell-history.png" alt="Cell history"><figcaption>The history of a single cell</figcaption></figure>
 <p>History is saved inside the <code>.julretsu</code> file, so it travels with the workbook. Julretsu keeps the latest 1,000 changes, and very large changes list their first 200 cells. If you share a file and prefer not to include its history, open the change log and choose <b>Clear history</b>.</p>
 
+<h3>Validation rules and protection</h3>
+<p>A validation rule says what a cell is allowed to hold, so a wrong value is refused as it is typed. Select the range, then choose <b>Data, Validation and protection</b>, or the button on the <b>Review</b> tab.</p>
+<figure><img src="images/validation.png" alt="Validation and protection"><figcaption>Adding a dropdown list to a column</figcaption></figure>
+<table>
+  <tr><th>Allowed values</th><th>What it accepts</th></tr>
+  <tr><td>Any value</td><td>Anything, useful together with Require a value or protection.</td></tr>
+  <tr><td>Number, Whole number</td><td>Values between a lowest and highest amount, inclusive.</td></tr>
+  <tr><td>Date</td><td>Dates written as YYYY-MM-DD, between two dates.</td></tr>
+  <tr><td>Dropdown list</td><td>One of the choices you type, one per line, up to 100 of them.</td></tr>
+</table>
+<ul>
+  <li><b>Require a value</b> refuses an empty cell, and <b>Unique values within this range</b> refuses a duplicate.</li>
+  <li><b>Protect contents and formatting</b> blocks edits to the range. Protected formulas still recalculate.</li>
+  <li><b>Warn instead of rejecting invalid values</b> lets the edit through and lists it under <b>Validation results</b>.</li>
+</ul>
+<p>Rules apply to everything, not just typing: a paste, a fill, a sort, a macro or an AI proposal that would break a rule is refused as a whole, so you never end up with half of it applied. Adding a rule to a sheet that already has problems keeps your data and lists the problems for you to fix. Click a listed address to jump to that cell.</p>
+<div class="warn"><b>Careful.</b> Protection prevents accidents; it is not a password or a permissions system. Anyone who has the workbook can remove its rules. Rules are saved only in <code>.julretsu</code> files, not in CSV or Excel exports, and a workbook with rules cannot be opened by Julretsu 1.1.0 or earlier.</div>
+
 <h2>12. Charts, reports and PDF</h2>
 <ol class="steps">
   <li>Select the cells you want in your report. If only one cell is selected, Julretsu uses every filled cell on the sheet.</li>
@@ -357,11 +398,11 @@
 <p>Templates are a quick way to try charts: open one, select its table and choose <b>Reports, Chart / print selected range</b>.</p>
 
 <h2>13. Lua macros</h2>
-<p>Lua macros automate repetitive edits. Open the <b>Lua workspace</b> from the navigation bar or <b>Home, Assist, Lua scripts</b>.</p>
+<p>Lua macros automate repetitive edits. Open the <b>Lua workspace</b> from the navigation bar or <b>Home, Assist, Lua scripts</b>. The editor has a <b>Code</b> tab for your script and a <b>Quick reference</b> tab listing what a macro can call. Below the code, a line shows where the cursor is, and <b>Output</b> reports what the last run did.</p>
 <ul>
   <li><code>cell('A1')</code> reads a cell as it was before the macro started.</li>
   <li><code>set('A1', value)</code> queues a change.</li>
-  <li>Click <b>Run macro</b>. All changes are applied together, and <b>Undo macro</b> reverts them in one step.</li>
+  <li>Click <b>Run macro</b>, or press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> while writing. All changes are applied together, and <b>Undo macro</b> reverts them in one step.</li>
 </ul>
 <p>This example adds 1 to every quantity in the budget:</p>
 <p><code>for row = 4, 9 do set('C' .. row, cell('C' .. row) + 1) end</code></p>
@@ -454,7 +495,7 @@
 <p>Julretsu is free to use under the Julretsu Software License. You may install and use it for personal, educational and business work, and the workbooks you create belong to you. Julretsu itself remains the property of Matthew Menchinton and Circuitspecter Studio. It is not open source, and you may not sell, redistribute or modify it. The full license is shown in the installer and included as the <code>LICENSE</code> file.</p>
 <p>Julretsu includes third party components, each under its own license, listed in <code>THIRD_PARTY_NOTICES.md</code>: Dear ImGui, GLFW, Lua, sol2, stb, miniz and pugixml.</p>
 <p>For questions or permission requests, contact the owner through <b>github.com/Deathbringer98</b>.</p>
-<p style="margin-top:30pt;color:var(--muted)">Julretsu 1.1.0 User Manual. Copyright (c) 2026 Matthew Menchinton &amp; Circuitspecter Studio. All rights reserved.</p>
+<p style="margin-top:30pt;color:var(--muted)">Julretsu 1.2.0 User Manual. Copyright (c) 2026 Matthew Menchinton &amp; Circuitspecter Studio. All rights reserved.</p>
 
 </body>
 </html>

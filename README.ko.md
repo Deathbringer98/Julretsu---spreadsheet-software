@@ -1,4 +1,4 @@
-# Julretsu 1.1.0
+# Julretsu 1.2.0
 ### 네이티브 스프레드시트 작업 공간
 
 [English](README.md) · **한국어** · [日本語](README.ja.md)
@@ -13,7 +13,7 @@ Julretsu는 무료로 사용할 수 있지만 소유권은 Matthew Menchinton에
 
 ## 앱 실행
 이 폴더의 **Start Julretsu.cmd**를 두 번 클릭하거나
-**release/Julretsu-1.1.0/Julretsu.exe**를 실행하세요. 함께 제공되는 DLL은 실행 파일 옆에 두어야 합니다.
+**release/Julretsu-1.2.0/Julretsu.exe**를 실행하세요. 함께 제공되는 DLL은 실행 파일 옆에 두어야 합니다.
 
 [빠른 시작과 조작법](docs/QUICKSTART.md) ·
 [Lua 계약](docs/LUA.md) ·
@@ -47,13 +47,13 @@ Excel을 완전히 대체하지는 않습니다.
   검증된 편집 제안을 검토한 뒤 한 번에 적용하고 되돌릴 수 있습니다.
 - 런타임 DLL과 의존성 라이선스 고지가 포함된 이동식 Windows 패키지.
 
-## 설치 파일(1.1.0)
-- **Windows:** `.\package.ps1`이 `release/Julretsu-1.1.0-Windows-Setup.exe`를 만듭니다. 라이선스
+## 설치 파일(1.2.0)
+- **Windows:** `.\package.ps1`이 `release/Julretsu-1.2.0-Windows-Setup.exe`를 만듭니다. 라이선스
   페이지, 시작 메뉴와 바탕 화면 바로 가기, `.julretsu` 파일 연결, 설정 > 앱에서 쓰는 제거 프로그램이
   들어 있는 사용자 단위 단일 파일 설치 프로그램입니다.
-- **macOS와 Linux:** `Installers` GitHub Actions 워크플로가 `Julretsu-1.1.0-macOS.dmg`
-  (유니버설, macOS 13.3 이상), `Julretsu-1.1.0-linux-amd64.deb`,
-  `Julretsu-1.1.0-linux-x86_64.tar.gz`를 만듭니다. `v*` 태그를 푸시하면 초안 릴리스에 첨부됩니다.
+- **macOS와 Linux:** `Installers` GitHub Actions 워크플로가 `Julretsu-1.2.0-macOS.dmg`
+  (유니버설, macOS 13.3 이상), `Julretsu-1.2.0-linux-amd64.deb`,
+  `Julretsu-1.2.0-linux-x86_64.tar.gz`를 만듭니다. `v*` 태그를 푸시하면 초안 릴리스에 첨부됩니다.
 - **사용 설명서:** `docs/Julretsu-User-Manual.pdf`(영어), `docs/Julretsu-User-Manual-ko.pdf`(한국어),
   `docs/Julretsu-User-Manual-ja.pdf`(일본어). `docs/manual/`의 HTML에서 생성되며 화면 이미지는
   `julretsu --manual-shots <폴더> --language ko`로 만듭니다. 모든 설치 파일에 세 가지가 모두 들어갑니다.

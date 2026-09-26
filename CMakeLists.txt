@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(Julretsu VERSION 1.1.0 LANGUAGES C CXX)
+project(Julretsu VERSION 1.2.0 LANGUAGES C CXX)
 option(JULRETSU_BUILD_GUI "Build native application" OFF)
 option(JULRETSU_ENABLE_LUA "Build Lua integration" OFF)
 option(JULRETSU_BUILD_TESTS "Build headless tests" ON)

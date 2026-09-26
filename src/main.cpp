@@ -345,7 +345,7 @@ int main(int argc,char** argv) {
         std::vector<double> frames; frames.reserve(400);
         std::size_t cpp_allocations=0,imgui_allocations=0,grid_allocations=0;
         bool quit=false;
-        const int frame_limit=smoke?205:(benchmark?400:(!manual_dir.empty()?100:0));
+        const int frame_limit=smoke?205:(benchmark?400:(!manual_dir.empty()?118:0));
         const int warmup=smoke?164:60;
         int frame=0; bool smoke_ok=true;
         while(!quit) {
@@ -404,6 +404,10 @@ int main(int argc,char** argv) {
                 if(frame==82) app.set_dark(true,false);
                 if(frame==87) app.set_dark(false,false);
                 if(frame==90) { app.jump({3,2}); app.smoke_ribbon_tab(3); }
+                if(frame==96) { app.smoke_ribbon_tab(0); app.jump({2,4}); app.smoke_validation(true); }
+                if(frame==102) { app.smoke_validation(false); app.smoke_tables(true); }
+                if(frame==108) { app.smoke_tables(false); app.smoke_restore_points(true); }
+                if(frame==114) app.smoke_restore_points(false);
             }
             if(smoke) {
                 io.AddFocusEvent(true);
@@ -546,7 +550,8 @@ int main(int argc,char** argv) {
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
             if(!manual_dir.empty()) {
                 static const std::pair<int,const char*> shots[]{{5,"overview"},{10,"file-menu"},{17,"format-cells"},{26,"sheet-check"},{34,"review"},
-                    {47,"cell-history"},{56,"ai-assistant"},{63,"lua"},{71,"chart-report"},{78,"workbook-floating"},{86,"dark-mode"},{93,"review-tab"}};
+                    {47,"cell-history"},{56,"ai-assistant"},{63,"lua"},{71,"chart-report"},{78,"workbook-floating"},{86,"dark-mode"},{93,"review-tab"},
+                    {100,"validation"},{106,"tables"},{112,"restore-points"}};
                 for(const auto& [at,name]:shots) if(frame==at) screenshot(manual_dir+"/"+name+".bmp",width,height);
             }
             if(smoke&&frame==94) screenshot(capture+"-file-menu.bmp",width,height);

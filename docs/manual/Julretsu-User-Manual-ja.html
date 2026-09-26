@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<title>Julretsu 1.1.0 ユーザー マニュアル</title>
+<title>Julretsu 1.2.0 ユーザー マニュアル</title>
 <style>
   @page { size: Letter; margin: 0.75in 0.8in 0.8in 0.8in; }
   :root { --green: #155E4B; --green-soft: #E2F1EB; --ink: #1E2A33; --muted: #5B6770; --line: #D6E0E2; --amber: #B26A00; }
@@ -54,7 +54,7 @@
   <h1>Julretsu</h1>
   <div class="subtitle">ユーザー マニュアル</div>
   <div class="subtitle">間違いが高くつく前に見つけるスプレッドシート。</div>
-  <div class="edition">バージョン 1.1.0<br>Circuitspecter Studio<br>Copyright (c) 2026 Matthew Menchinton &amp; Circuitspecter Studio</div>
+  <div class="edition">バージョン 1.2.0<br>Circuitspecter Studio<br>Copyright (c) 2026 Matthew Menchinton &amp; Circuitspecter Studio</div>
 </section>
 
 <h2 style="break-before: page">目次</h2>
@@ -99,18 +99,18 @@
 <div class="tip"><b>ヒント.</b> Julretsu はサンプルのプロジェクト予算とともに起動します。このマニュアルの画面はすべてそのサンプルを使っているので、そのまま試せます。</div>
 
 <h2>2. Julretsu のインストール</h2>
-<p>Julretsu の Web サイトからお使いのコンピューター用のインストーラーをダウンロードしてください。Julretsu 1.1.0 には次のパッケージがあります。</p>
+<p>Julretsu の Web サイトからお使いのコンピューター用のインストーラーをダウンロードしてください。Julretsu 1.2.0 には次のパッケージがあります。</p>
 <table>
   <tr><th>コンピューター</th><th>ファイル</th><th>動作条件</th></tr>
-  <tr><td>Windows</td><td><code>Julretsu-1.1.0-Windows-Setup.exe</code></td><td>Windows 10 または 11 (64 ビット)、OpenGL 3.3 に対応したグラフィックス</td></tr>
-  <tr><td>Mac</td><td><code>Julretsu-1.1.0-macOS.dmg</code></td><td>macOS 13.3 Ventura 以降、Apple シリコンまたは Intel</td></tr>
-  <tr><td>Linux (Ubuntu、Debian、Mint)</td><td><code>Julretsu-1.1.0-linux-amd64.deb</code></td><td>64 ビットの Intel または AMD、X11 か XWayland のデスクトップ</td></tr>
-  <tr><td>Linux (すべてのディストリビューション)</td><td><code>Julretsu-1.1.0-linux-x86_64.tar.gz</code></td><td>上と同じ。インストール不要です</td></tr>
+  <tr><td>Windows</td><td><code>Julretsu-1.2.0-Windows-Setup.exe</code></td><td>Windows 10 または 11 (64 ビット)、OpenGL 3.3 に対応したグラフィックス</td></tr>
+  <tr><td>Mac</td><td><code>Julretsu-1.2.0-macOS.dmg</code></td><td>macOS 13.3 Ventura 以降、Apple シリコンまたは Intel</td></tr>
+  <tr><td>Linux (Ubuntu、Debian、Mint)</td><td><code>Julretsu-1.2.0-linux-amd64.deb</code></td><td>64 ビットの Intel または AMD、X11 か XWayland のデスクトップ</td></tr>
+  <tr><td>Linux (すべてのディストリビューション)</td><td><code>Julretsu-1.2.0-linux-x86_64.tar.gz</code></td><td>上と同じ。インストール不要です</td></tr>
 </table>
 
 <h3>Windows</h3>
 <ol class="steps">
-  <li><b>Julretsu-1.1.0-Windows-Setup.exe</b> をダブルクリックします。</li>
+  <li><b>Julretsu-1.2.0-Windows-Setup.exe</b> をダブルクリックします。</li>
   <li>ライセンスを読み、<b>Julretsu ソフトウェア ライセンスに同意します</b> にチェックを入れて <b>次へ</b> をクリックします。</li>
   <li>Julretsu をインストールする場所を選びます。既定のフォルダーはご自分のユーザー フォルダー内なので、管理者権限は必要ありません。</li>
   <li>オプションを選びます。スタート メニューの項目、デスクトップのショートカット、<code>.julretsu</code> のブックをダブルクリックしたときに Julretsu で開くかどうかを指定できます。</li>
@@ -124,7 +124,7 @@
 
 <h3>Mac</h3>
 <ol class="steps">
-  <li><b>Julretsu-1.1.0-macOS.dmg</b> をダブルクリックして開きます。</li>
+  <li><b>Julretsu-1.2.0-macOS.dmg</b> をダブルクリックして開きます。</li>
   <li>同じウィンドウに表示される <b>アプリケーション</b> フォルダーへ <b>Julretsu</b> をドラッグします。</li>
   <li>アプリケーション フォルダーを開いて Julretsu を起動します。</li>
 </ol>
@@ -132,7 +132,7 @@
 
 <h3>Linux</h3>
 <p><b>Ubuntu、Debian、Linux Mint など:</b> <code>.deb</code> ファイルをダブルクリックしてソフトウェア センターからインストールするか、ダウンロードしたフォルダーで次のコマンドを実行します。</p>
-<p><code>sudo apt install ./Julretsu-1.1.0-linux-amd64.deb</code></p>
+<p><code>sudo apt install ./Julretsu-1.2.0-linux-amd64.deb</code></p>
 <p>インストールすると、アプリケーション メニューに Julretsu が表示され、<code>.julretsu</code> ファイルが Julretsu で開きます。</p>
 <p><b>その他のディストリビューション:</b> <code>.tar.gz</code> ファイルを好きな場所に展開し、展開したフォルダー内の <code>bin/julretsu</code> を実行します。</p>
 <div class="note"><b>メモ.</b> Linux では、Julretsu はデスクトップ側のファイル ダイアログを使います。zenity または kdialog が必要というメッセージが出たら、どちらかをインストールしてください (例: <code>sudo apt install zenity</code>)。</div>
@@ -283,6 +283,17 @@
 <h3>見出しの固定</h3>
 <p><b>表示</b> メニューで <b>先頭行の固定</b>、<b>先頭列の固定</b>、またはその両方を選ぶと、スクロールしても見出しが表示されたままになります。</p>
 
+<h3>構造化テーブル</h3>
+<p>構造化テーブルはひとまとまりのデータを束ねて、表が正しく伸びるようにします。見出し行と 1 行以上のデータ行を選び、<b>データ、構造化テーブル</b> を選んで名前を入力し、<b>選択範囲からテーブルを作成</b> をクリックします。<b>集計行を追加</b> にチェックを入れると、数値の列ごとに Julretsu が合計を作成して管理します。</p>
+<figure><img src="images-ja/tables.png" alt="Structured tables"><figcaption>選択範囲を構造化テーブルにする</figcaption></figure>
+<ul>
+  <li>新しい行は 1 つ上の行の数式、書式、入力規則を引き継ぐので、単価や合計の列は計算され続けます。</li>
+  <li>集計行のあるテーブルは <b>テーブルに行を追加</b> で伸ばします。新しい行が集計の上に挿入され、集計の範囲も広がります。</li>
+  <li>集計行のないテーブルは、すぐ下の最初の空行に入力するだけでも自動で広がります。</li>
+  <li><b>テーブル定義を削除</b> は自動的な動きだけを止め、セル、書式、規則はそのまま残します。元に戻す操作で定義を復元できます。</li>
+</ul>
+<div class="note"><b>メモ.</b> 見出しは空白にせず、それぞれ異なる必要があります。テーブル同士は重ねられず、1 つのテーブルは最大 100,000 セルです。行や列を挿入、削除する前にテーブル定義を削除し、伸ばすときはテーブルに行を追加を使ってください。</div>
+
 <h2>8. 複数のワークシートを使う</h2>
 <p>1 つのブックにワークシートを最大 64 枚まで入れられます。グリッド左下のシート ボタンでシートを切り替え、<b>ブック、シートの管理</b> で追加、複製、名前の変更、並べ替え、削除ができます。</p>
 <p>別のシートの値を使うには、<code>SHEET</code> にシート名とセル番地を引用符付きで指定します (例: <code>=SHEET("Q1 Sales","B12")</code>)。シート名を変更したら、数式の中の名前も更新してください。</p>
@@ -296,14 +307,26 @@
 <h3>自動回復</h3>
 <p>未保存の作業が 1 分続くと、Julretsu は静かに回復用のコピーを作り、1 分ごとに更新します。Julretsu やコンピューターが不意に終了した場合、次回起動時にそのコピーを復元するか尋ねます。<b>復元</b> を選び、<b>名前を付けて保存</b> でブックを保存してください。通常どおり保存または終了すると、回復用のコピーは削除されます。<b>ブック</b> メニューからオフにしたり、手動で開いたりもできます。</p>
 
+<h3>復元ポイント</h3>
+<p>復元ポイントは、あとで戻れるブック全体のスナップショットです。<b>編集、復元ポイント</b>、または <b>校閲</b> タブの <b>復元ポイント</b> ボタンを使います。先にブックを保存し、名前を入力して <b>復元ポイントを作成</b> をクリックします。</p>
+<figure><img src="images-ja/restore-points.png" alt="Restore points"><figcaption>変更内容のプレビュー付きの復元ポイント</figcaption></figure>
+<ol class="steps">
+  <li>一覧で復元ポイントを選ぶと、それ以降の変更を確認できます。違いのあるセルの数と、ワークシート、書式、規則の変更が表示されます。</li>
+  <li><b>選択したバージョンを復元</b> をクリックします。Julretsu はまず現在の作業の安全コピーを <b>復元前</b> という名前で保存します。</li>
+  <li>結果を確認してから保存して確定します。思っていた内容と違う場合は、安全コピーを復元してください。</li>
+</ol>
+<p>保存するたびに Julretsu は <b>保存前</b> の復元ポイントも作るので、うまくいかなかった編集だけが残ることはありません。</p>
+<div class="note"><b>メモ.</b> 復元ポイントはブックのファイルの隣にある履歴フォルダーに保存されるので、ファイルを移動するときはフォルダーも一緒に移動してください。Julretsu は自動の復元ポイントを最新 20 件、名前付きのものを最大 100 件保持します。</div>
+
 <h2>10. CSV と Excel のファイル</h2>
 <h3>CSV ファイル</h3>
 <p><b>ファイル、CSV のインポート</b> と <b>ファイル、CSV のエクスポート</b> を使います。Julretsu は UTF-8 の CSV ファイルを読み書きし、カンマ、引用符、複数行を含む値にも対応します。インポート時は数値と TRUE、FALSE が認識され、それ以外は文字列になります。CSV ファイル内の数式が実行されることはありません。</p>
 <p>エクスポートした CSV ファイルには計算結果が入ります。<code>=</code>、<code>+</code>、<code>-</code>、<code>@</code> で始まる文字列は先頭にアポストロフィを付けて保護するため、ほかのスプレッドシート ソフトが数式として実行することはありません。</p>
 <h3>Excel のブック</h3>
-<p><b>ファイル、Excel のインポート</b> は <code>.xlsx</code> ファイルの最初のワークシートを読み込みます。Excel が最後に計算した結果を取り込むには <b>保存された値</b> を、四則演算、比較、<code>SUM</code>、<code>AVERAGE</code>、<code>IF</code> を数式のまま残すには <b>対応する数式</b> を選びます。読み込む前に、何が取り込まれ、何が取り込まれないかを Julretsu が正確に表示します。</p>
-<p><b>ファイル、Excel のエクスポート</b> は、現在のワークシートを、対応する数式、太字、色、行ごとの小数書式とともに <code>.xlsx</code> ファイルとして保存します。</p>
-<div class="note"><b>メモ.</b> セルの結合、グラフ、列幅、コメント、ほかのワークシートといった Excel の機能はインポートもエクスポートもされません。すべてを保持するには <code>.julretsu</code> のコピーを残してください。</div>
+<p><b>ファイル、Excel のインポート</b> は <code>.xlsx</code> ファイルのすべてのワークシートを、セルごとの書式と対応する入力規則とともに読み込みます。Excel が最後に計算した結果を取り込むには <b>保存された値</b> を、四則演算、比較、<code>SUM</code>、<code>AVERAGE</code>、<code>IF</code> を数式のまま残すには <b>対応する数式</b> を選びます。別のシートへの参照は <code>SHEET</code> の数式として入ります。読み込む前に、シートごとに何が取り込まれ、何が取り込まれないかを Julretsu が正確に表示します。</p>
+<p><b>ファイル、Excel のエクスポート</b> は、ブック全体を <code>.xlsx</code> ファイルとして保存します。すべてのワークシート、対応する数式、セルの書式、そして Excel が扱えるドロップダウン、数値、日付の規則が含まれます。Excel で表せない数式は計算結果の値として書き出され、その件数をメッセージで知らせます。</p>
+<div class="note"><b>メモ.</b> Excel 側の制限があるため、シート名は重複せず 31 文字以内、ドロップダウンはカンマや引用符を含まず 255 文字以内、入力規則の範囲は重ならないようにする必要があります。Julretsu は規則を黙って捨てず、どれを直せばよいかを知らせます。</div>
+<div class="note"><b>メモ.</b> セルの結合、グラフ、列幅、コメントといった Excel の機能はインポートもエクスポートもされず、1904 年日付システムのブックには対応していません。すべてを保持するには <code>.julretsu</code> のコピーを残してください。</div>
 
 <h2>11. セーフティ ネット</h2>
 <p>Julretsu は、高くつくスプレッドシートのミスの裏にある日常的な間違いに目を配ります。作業を止めることはありません。どこがおかしく見えるかを説明し、判断はあなたに任せます。</p>
@@ -334,6 +357,24 @@
 <figure><img src="images-ja/cell-history.png" alt="Cell history"><figcaption>1 つのセルの履歴</figcaption></figure>
 <p>履歴は <code>.julretsu</code> ファイルの中に保存されるので、ブックと一緒に移動します。Julretsu は直近 1,000 件の変更を保持し、非常に大きな変更は最初の 200 個のセルだけを表示します。ファイルを共有するときに履歴を含めたくない場合は、変更履歴を開いて <b>履歴を消去</b> を選んでください。</p>
 
+<h3>入力規則と保護</h3>
+<p>入力規則は、セルに入れてよい値を決めておき、誤った値を入力した時点で拒否します。範囲を選んでから <b>データ、入力規則と保護</b>、または <b>校閲</b> タブのボタンを使います。</p>
+<figure><img src="images-ja/validation.png" alt="Validation and protection"><figcaption>列にドロップダウン リストを追加する</figcaption></figure>
+<table>
+  <tr><th>許可する値</th><th>受け付ける値</th></tr>
+  <tr><td>すべての値</td><td>何でも受け付けます。入力を必須にする設定や保護と組み合わせると便利です。</td></tr>
+  <tr><td>数値、整数</td><td>最小値と最大値の間の値 (両端を含む)。</td></tr>
+  <tr><td>日付</td><td>YYYY-MM-DD 形式で書いた 2 つの日付の間の日付。</td></tr>
+  <tr><td>ドロップダウン リスト</td><td>1 行に 1 つずつ入力した選択肢のいずれか。最大 100 項目まで指定できます。</td></tr>
+</table>
+<ul>
+  <li><b>入力を必須にする</b> は空のセルを拒否し、<b>この範囲で値の重複を禁止</b> は重複した値を拒否します。</li>
+  <li><b>内容と書式を保護</b> はその範囲の編集を禁止します。保護された数式も再計算は続きます。</li>
+  <li><b>無効な値を拒否せず警告を表示</b> を選ぶと入力は通り、その内容が <b>検証結果</b> に表示されます。</li>
+</ul>
+<p>規則は入力だけでなくすべての操作に適用されます。規則に反する貼り付け、フィル、並べ替え、マクロ、AI の提案は全体が拒否されるので、途中まで適用されることはありません。すでに問題のあるシートに規則を追加しても、データはそのままで問題の一覧が表示されます。一覧のセル番地をクリックすると、そのセルへ移動します。</p>
+<div class="warn"><b>注意.</b> 保護は事故を防ぐためのもので、パスワードや権限の仕組みではありません。ブックを持っている人は誰でも規則を削除できます。規則は <code>.julretsu</code> ファイルにのみ保存され、CSV や Excel への書き出しには含まれません。規則のあるブックは Julretsu 1.1.0 以前では開けません。</div>
+
 <h2>12. グラフ、レポート、PDF</h2>
 <ol class="steps">
   <li>レポートに入れるセルを選びます。セルを 1 つだけ選んだ場合、Julretsu はシート上の入力済みセルをすべて使います。</li>
@@ -357,11 +398,11 @@
 <p>テンプレートはグラフを手早く試すのに向いています。テンプレートを開いて表を選び、<b>レポート、選択範囲のグラフ / 印刷</b> を選んでください。</p>
 
 <h2>13. Lua マクロ</h2>
-<p>Lua マクロは繰り返しの編集を自動化します。ナビゲーション バーの <b>Lua ワークスペース</b>、または <b>ホーム、アシスト、Lua スクリプト</b> から開きます。</p>
+<p>Lua マクロは繰り返しの編集を自動化します。ナビゲーション バーの <b>Lua ワークスペース</b>、または <b>ホーム、アシスト、Lua スクリプト</b> から開きます。エディターにはスクリプトを書く <b>コード</b> タブと、マクロから呼び出せるものをまとめた <b>クイックリファレンス</b> タブがあります。コードの下にはカーソル位置が表示され、<b>実行結果</b> に最後の実行内容が出ます。</p>
 <ul>
   <li><code>cell('A1')</code> は、マクロが始まる前のセルの値を読みます。</li>
   <li><code>set('A1', value)</code> は変更を予約します。</li>
-  <li><b>マクロを実行</b> をクリックします。すべての変更がまとめて適用され、<b>マクロを元に戻す</b> で一度に戻せます。</li>
+  <li><b>マクロを実行</b> をクリックするか、入力中に <kbd>Ctrl</kbd>+<kbd>Enter</kbd> を押します。すべての変更がまとめて適用され、<b>マクロを元に戻す</b> で一度に戻せます。</li>
 </ul>
 <p>次の例は、予算のすべての数量に 1 を足します。</p>
 <p><code>for row = 4, 9 do set('C' .. row, cell('C' .. row) + 1) end</code></p>
@@ -454,7 +495,7 @@
 <p>Julretsu は Julretsu ソフトウェア ライセンスのもとで無料で使えます。個人、教育、業務の作業のためにインストールして使用でき、作成したブックはあなたのものです。Julretsu 自体は Matthew Menchinton と Circuitspecter Studio の所有物のままです。オープンソースではなく、販売、再配布、改変はできません。ライセンス全文はインストーラーに表示され、<code>LICENSE</code> ファイルとしても含まれています。</p>
 <p>Julretsu には、それぞれのライセンスに従うサードパーティ コンポーネントが含まれており、<code>THIRD_PARTY_NOTICES.md</code> に記載しています: Dear ImGui、GLFW、Lua、sol2、stb、miniz、pugixml。</p>
 <p>ご質問や許諾のご依頼は <b>github.com/Deathbringer98</b> から所有者へご連絡ください。</p>
-<p style="margin-top:30pt;color:var(--muted)">Julretsu 1.1.0 ユーザー マニュアル. Copyright (c) 2026 Matthew Menchinton &amp; Circuitspecter Studio. All rights reserved.</p>
+<p style="margin-top:30pt;color:var(--muted)">Julretsu 1.2.0 ユーザー マニュアル. Copyright (c) 2026 Matthew Menchinton &amp; Circuitspecter Studio. All rights reserved.</p>
 
 </body>
 </html>
