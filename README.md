@@ -1,6 +1,8 @@
 # Julretsu 1.1.0
 ### A native spreadsheet workbench
 
+**English** · [한국어](README.ko.md) · [日本語](README.ja.md)
+
 Julretsu now includes a Windows-tested native ImGui application, a sparse C++20
 spreadsheet engine, and bounded Lua formulas/macros. Julretsu is free to use but owned by Matthew Menchinton; it is not open source. See [LICENSE](LICENSE).
 The architecture also targets Linux and macOS; those builds have not been run
@@ -50,8 +52,9 @@ This is an editable native MVP, not a complete Excel replacement.
 - **macOS and Linux:** the `Installers` GitHub Actions workflow builds `Julretsu-1.1.0-macOS.dmg`
   (universal, macOS 13.3+), `Julretsu-1.1.0-linux-amd64.deb` and `Julretsu-1.1.0-linux-x86_64.tar.gz`.
   Pushing a `v*` tag attaches them to a draft GitHub release.
-- **Manual:** `docs/Julretsu-User-Manual.pdf`, generated from `docs/manual/Julretsu-User-Manual.html`
-  (screenshots come from `julretsu --manual-shots <folder>`). Every installer includes it.
+- **Manuals:** `docs/Julretsu-User-Manual.pdf` (English), `-ko.pdf` (Korean) and `-ja.pdf` (Japanese),
+  generated from the HTML in `docs/manual/` (screenshots come from
+  `julretsu --manual-shots <folder> --language ko`). Every installer includes all three.
 
 ## Build and test on this Windows machine
 ```powershell

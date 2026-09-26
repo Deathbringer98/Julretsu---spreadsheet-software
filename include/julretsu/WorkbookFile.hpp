@@ -3,7 +3,7 @@
 #include <filesystem>
 namespace julretsu {
 struct WorkbookData { Batch data; std::string script; std::vector<ChangeRecord> journal; };
-struct DocumentSheet { std::string name,bytes; };
+struct DocumentSheet { std::string name,bytes; bool operator==(const DocumentSheet&) const = default; };
 std::string serialize_sheet(const Sheet&,std::string_view script);
 WorkbookData deserialize_sheet(std::string_view);
 void write_document(const std::filesystem::path&,const std::vector<DocumentSheet>&);

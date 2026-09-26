@@ -5,6 +5,8 @@
 #include "WindowFrame.hpp"
 #include "SheetHealth.hpp"
 #include "I18n.hpp"
+#include "Xlsx.hpp"
+#include "RestorePoints.hpp"
 #include <optional>
 #include <set>
 #include <functional>
@@ -92,6 +94,32 @@ class GridUI {
     void find_next();
     void select_used();
     void draw_tools();
+    std::vector<DocumentSheet> current_document();
+    bool restore_open_=false,tables_open_=false;
+    std::array<char,161> checkpoint_name_{};
+    std::vector<RestorePoint> restore_points_;
+    std::optional<RestorePoint> restore_selected_;
+    std::vector<DocumentSheet> restore_baseline_,restore_target_;
+    WorkbookDifference restore_difference_;
+    std::array<char,65> table_name_{};
+    bool table_totals_=true;
+    void draw_business_tools();
+    void show_restore_points();
+    std::string lua_result_;
+    bool lua_error_=false;
+    std::array<int,2> lua_cursor_{1,1};
+    float script_panel_width_=480;
+
+    bool validation_open_=false;
+    ValidationRule validation_draft_;
+    std::array<char,32> validation_first_{},validation_last_{};
+    std::array<char,11> validation_date_min_{},validation_date_max_{};
+    std::array<char,26000> validation_choices_{};
+    std::vector<ValidationIssue> validation_issues_;
+    std::uint64_t validation_revision_=~std::uint64_t{},validation_instance_=0;
+    void open_validation();
+    void draw_validation();
+    Sheet checked_import(Sheet incoming);
     // Safety net: review of risky changes, sheet check and per-cell history.
     struct PendingReview { std::string label; std::vector<CellChange> cells; std::uint32_t total{}, formulas_replaced{}; std::vector<std::string> warnings; };
     std::optional<PendingReview> review_;
@@ -131,6 +159,8 @@ class GridUI {
     std::string workbook_name_="Untitled workbook", file_label_, file_error_;
     bool editor_dirty_=false;
     bool xlsx_formulas_=false;
+    std::optional<XlsxWorkbook> xlsx_preview_;
+    void draw_xlsx_preview();
     std::unique_ptr<AiSession> ai_session_=std::make_unique<AiSession>();
     AiSettings ai_settings_, ai_request_settings_;
     std::array<char,256> ai_model_{};
@@ -191,6 +221,10 @@ public:
     [[nodiscard]] bool ai_open() const noexcept { return ai_open_; }
     void show_ai(bool show) noexcept { ai_open_=show; if(show) { scripts_open_=false; health_open_=false; } }
     void show_health(bool show) noexcept { health_open_=show; if(show) { scripts_open_=false; ai_open_=false; health_force_=true; } }
+    void smoke_validation(bool show);
+    void smoke_restore_points(bool show) { restore_open_=show; if(show) show_restore_points(); }
+    void smoke_tables(bool show) { tables_open_=show; }
+    bool smoke_validation_import();
     bool smoke_safety_net(const std::filesystem::path&);
     void smoke_open_review();
     void smoke_close_review();

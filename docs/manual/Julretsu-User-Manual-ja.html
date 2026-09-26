@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Julretsu 1.1.0 ユーザー マニュアル</title>
+<style>
+  @page { size: Letter; margin: 0.75in 0.8in 0.8in 0.8in; }
+  :root { --green: #155E4B; --green-soft: #E2F1EB; --ink: #1E2A33; --muted: #5B6770; --line: #D6E0E2; --amber: #B26A00; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Malgun Gothic", "Yu Gothic UI", "Apple SD Gothic Neo", "Hiragino Sans", "Noto Sans CJK KR", Arial, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.5; margin: 0; }
+  h1, h2, h3 { color: var(--green); line-height: 1.2; }
+  h2 { font-size: 20pt; margin: 0 0 10pt; padding-bottom: 6pt; border-bottom: 2px solid var(--green-soft); break-before: page; }
+  h3 { font-size: 13pt; margin: 18pt 0 6pt; }
+  p { margin: 0 0 8pt; }
+  ul, ol { margin: 0 0 8pt 0; padding-left: 18pt; }
+  li { margin-bottom: 3pt; }
+  code, kbd { font-family: Consolas, "Courier New", monospace; font-size: 9.5pt; }
+  kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; background: #F6F9F9; white-space: nowrap; }
+  code { background: #F1F5F5; padding: 0 3px; border-radius: 3px; }
+  figure { margin: 10pt 0 14pt; break-inside: avoid; }
+  figure img { width: 100%; border: 1px solid var(--line); border-radius: 6px; display: block; }
+  figure.small img { width: 62%; margin: 0 auto; }
+  figcaption { color: var(--muted); font-size: 9pt; margin-top: 4pt; text-align: center; }
+  table { width: 100%; border-collapse: collapse; margin: 6pt 0 12pt; break-inside: avoid; font-size: 9.8pt; }
+  th, td { text-align: left; padding: 5pt 7pt; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--green-soft); color: var(--green); font-weight: 600; }
+  .tip, .note, .warn { border-radius: 6px; padding: 8pt 11pt; margin: 8pt 0 12pt; break-inside: avoid; }
+  .tip { background: var(--green-soft); }
+  .note { background: #F1F5F7; }
+  .warn { background: #FFF4E0; }
+  .tip b:first-child, .note b:first-child, .warn b:first-child { color: var(--green); }
+  .warn b:first-child { color: var(--amber); }
+  .cover { height: 9.2in; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
+  .cover img { width: 120px; margin-bottom: 26pt; }
+  .cover h1 { font-size: 40pt; margin: 0; }
+  .cover .subtitle { font-size: 16pt; color: var(--muted); margin-top: 6pt; }
+  .cover .edition { margin-top: 40pt; font-size: 11pt; color: var(--muted); }
+  .toc { columns: 2; column-gap: 28pt; }
+  .toc ol { padding-left: 16pt; }
+  .toc li { margin-bottom: 5pt; break-inside: avoid; }
+  .callouts { position: relative; }
+  .callouts img { width: 100%; border: 1px solid var(--line); border-radius: 6px; display: block; }
+  .callouts span { position: absolute; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: #D93A2B; color: white;
+                   font-size: 9pt; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,.35); }
+  .steps li { margin-bottom: 6pt; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14pt; }
+  .two figure { margin: 4pt 0 10pt; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <img src="../../assets/app-icon.png" alt="Julretsu icon">
+  <h1>Julretsu</h1>
+  <div class="subtitle">ユーザー マニュアル</div>
+  <div class="subtitle">間違いが高くつく前に見つけるスプレッドシート。</div>
+  <div class="edition">バージョン 1.1.0<br>Circuitspecter Studio<br>Copyright (c) 2026 Matthew Menchinton &amp; Circuitspecter Studio</div>
+</section>
+
+<h2 style="break-before: page">目次</h2>
+<div class="toc">
+<ol>
+  <li>Julretsu について</li>
+  <li>Julretsu のインストール</li>
+  <li>画面の説明</li>
+  <li>データの入力と編集</li>
+  <li>数式</li>
+  <li>シートの書式設定</li>
+  <li>行、列、並べ替え、フィルター</li>
+  <li>複数のワークシートを使う</li>
+  <li>保存、開く、回復</li>
+  <li>CSV と Excel のファイル</li>
+  <li>セーフティ ネット</li>
+  <li>グラフ、レポート、PDF</li>
+  <li>Lua マクロ</li>
+  <li>AI アシスタント (任意)</li>
+  <li>言語、表示、テーマ</li>
+  <li>ショートカット キー</li>
+  <li>困ったときは</li>
+  <li>Julretsu のアンインストール</li>
+  <li>ライセンスとお問い合わせ</li>
+</ol>
+</div>
+
+<h2>1. Julretsu について</h2>
+<p>Julretsu は Windows、macOS、Linux 用のデスクトップ スプレッドシートです。使い慣れたスプレッドシートと同じように動きます。セルのグリッド、入力するたびに再計算される数式、書式、並べ替え、グラフ、印刷がそろっています。ブックはお使いのコンピューターの中だけに保存されます。</p>
+<p>Julretsu ならではの特長は<b>セーフティ ネット</b>です。金額の打ち間違い、行が抜けた合計、1 行ずれた貼り付けといったスプレッドシートのミスは、毎年多くの企業に実際の損失をもたらしています。Julretsu は編集した時点でそれを見つけ、大きな変更は確定する前に見せ、すべての変更をブックの中に記録します。</p>
+<h3>Julretsu でできること</h3>
+<ul>
+  <li>最大 1,000,000 行、16,384 列のシートで予算、価格表、スケジュール、レポートを作成できます。</li>
+  <li><code>SUM</code>、<code>AVERAGE</code>、<code>IF</code> などの数式を使い、ワークシート同士を参照できます。</li>
+  <li>フォント、色、罫線、通貨、パーセンテージ、日付でセルの書式を設定できます。</li>
+  <li>CSV ファイルや Microsoft Excel の <code>.xlsx</code> ブックを開いて保存できます。</li>
+  <li>選択範囲を棒グラフや折れ線グラフにして、レポートとしてエクスポートしたり、印刷したり、PDF として保存できます。</li>
+  <li>英語、韓国語、日本語で使えます。セルにもそのまま入力できます。</li>
+  <li>短い Lua マクロで繰り返しの編集を自動化できます。</li>
+  <li>必要なら AI モデルに編集を提案させ、適用する前に自分で確認できます。</li>
+</ul>
+<div class="tip"><b>ヒント.</b> Julretsu はサンプルのプロジェクト予算とともに起動します。このマニュアルの画面はすべてそのサンプルを使っているので、そのまま試せます。</div>
+
+<h2>2. Julretsu のインストール</h2>
+<p>Julretsu の Web サイトからお使いのコンピューター用のインストーラーをダウンロードしてください。Julretsu 1.1.0 には次のパッケージがあります。</p>
+<table>
+  <tr><th>コンピューター</th><th>ファイル</th><th>動作条件</th></tr>
+  <tr><td>Windows</td><td><code>Julretsu-1.1.0-Windows-Setup.exe</code></td><td>Windows 10 または 11 (64 ビット)、OpenGL 3.3 に対応したグラフィックス</td></tr>
+  <tr><td>Mac</td><td><code>Julretsu-1.1.0-macOS.dmg</code></td><td>macOS 13.3 Ventura 以降、Apple シリコンまたは Intel</td></tr>
+  <tr><td>Linux (Ubuntu、Debian、Mint)</td><td><code>Julretsu-1.1.0-linux-amd64.deb</code></td><td>64 ビットの Intel または AMD、X11 か XWayland のデスクトップ</td></tr>
+  <tr><td>Linux (すべてのディストリビューション)</td><td><code>Julretsu-1.1.0-linux-x86_64.tar.gz</code></td><td>上と同じ。インストール不要です</td></tr>
+</table>
+
+<h3>Windows</h3>
+<ol class="steps">
+  <li><b>Julretsu-1.1.0-Windows-Setup.exe</b> をダブルクリックします。</li>
+  <li>ライセンスを読み、<b>Julretsu ソフトウェア ライセンスに同意します</b> にチェックを入れて <b>次へ</b> をクリックします。</li>
+  <li>Julretsu をインストールする場所を選びます。既定のフォルダーはご自分のユーザー フォルダー内なので、管理者権限は必要ありません。</li>
+  <li>オプションを選びます。スタート メニューの項目、デスクトップのショートカット、<code>.julretsu</code> のブックをダブルクリックしたときに Julretsu で開くかどうかを指定できます。</li>
+  <li><b>インストール</b> をクリックします。完了したら <b>今すぐ Julretsu を開始</b> にチェックを入れたまま <b>完了</b> をクリックします。</li>
+</ol>
+<div class="two">
+  <figure><img src="images-ja/setup-license.png" alt="License page"><figcaption>手順 2: ライセンスへの同意</figcaption></figure>
+  <figure><img src="images-ja/setup-options.png" alt="Options page"><figcaption>手順 3 と 4: インストール オプション</figcaption></figure>
+</div>
+<div class="warn"><b>Windows で「WindowsによってPCが保護されました」と表示されたら.</b> このメッセージは、Windows がまだあまり見ていない新しいプログラムで表示されます。<b>詳細情報</b> をクリックし、発行元とファイル名が想定どおりか確認してから <b>実行</b> をクリックしてください。</div>
+
+<h3>Mac</h3>
+<ol class="steps">
+  <li><b>Julretsu-1.1.0-macOS.dmg</b> をダブルクリックして開きます。</li>
+  <li>同じウィンドウに表示される <b>アプリケーション</b> フォルダーへ <b>Julretsu</b> をドラッグします。</li>
+  <li>アプリケーション フォルダーを開いて Julretsu を起動します。</li>
+</ol>
+<div class="warn"><b>macOS が悪質なソフトウェアかどうか確認できないと表示したら.</b> 初回だけ、アプリケーション フォルダーの Julretsu を Control キーを押しながら (または右クリックで) クリックして <b>開く</b> を選び、もう一度 <b>開く</b> をクリックしてください。<b>システム設定、プライバシーとセキュリティ</b> で <b>このまま開く</b> をクリックしてもかまいません。この操作は一度だけで済みます。</div>
+
+<h3>Linux</h3>
+<p><b>Ubuntu、Debian、Linux Mint など:</b> <code>.deb</code> ファイルをダブルクリックしてソフトウェア センターからインストールするか、ダウンロードしたフォルダーで次のコマンドを実行します。</p>
+<p><code>sudo apt install ./Julretsu-1.1.0-linux-amd64.deb</code></p>
+<p>インストールすると、アプリケーション メニューに Julretsu が表示され、<code>.julretsu</code> ファイルが Julretsu で開きます。</p>
+<p><b>その他のディストリビューション:</b> <code>.tar.gz</code> ファイルを好きな場所に展開し、展開したフォルダー内の <code>bin/julretsu</code> を実行します。</p>
+<div class="note"><b>メモ.</b> Linux では、Julretsu はデスクトップ側のファイル ダイアログを使います。zenity または kdialog が必要というメッセージが出たら、どちらかをインストールしてください (例: <code>sudo apt install zenity</code>)。</div>
+
+<h2>3. 画面の説明</h2>
+<figure>
+  <div class="callouts">
+  <img src="images-ja/overview.png" alt="The Julretsu window">
+  <span style="left:11%;top:1.8%">1</span>
+  <span style="left:27.4%;top:1.8%">2</span>
+  <span style="left:95.6%;top:1.8%">3</span>
+  <span style="left:19%;top:6.4%">4</span>
+  <span style="left:58%;top:6.4%">5</span>
+  <span style="left:22%;top:11.4%">6</span>
+  <span style="left:92.8%;top:11.1%">7</span>
+  <span style="left:50%;top:21%">8</span>
+  <span style="left:56%;top:28.2%">9</span>
+  <span style="left:6%;top:43%">10</span>
+  <span style="left:56%;top:57%">11</span>
+  <span style="left:16.6%;top:92.8%">12</span>
+  <span style="left:14%;top:98.4%">13</span>
+  </div>
+  <figcaption>サンプルの予算を開いたメイン ウィンドウ</figcaption>
+</figure>
+<table>
+  <tr><th>#</th><th>各部</th><th>はたらき</th></tr>
+  <tr><td>1</td><td>メニュー</td><td>編集、データ、書式、レポート、ブック、表示の各メニューにすべてのコマンドがあります。</td></tr>
+  <tr><td>2</td><td>クイック アクセス</td><td>保存、元に戻す、やり直しをいつでもワンクリックで実行できます。</td></tr>
+  <tr><td>3</td><td>ウィンドウ ボタン</td><td>Julretsu を最小化、最大化、終了します。上部 2 行の空いている場所をドラッグするとウィンドウを移動できます。</td></tr>
+  <tr><td>4</td><td>ブック名</td><td>編集中のファイルと、未保存の変更があるかどうかを表示します。</td></tr>
+  <tr><td>5</td><td>セルへ移動</td><td><code>C4</code> のような番地を入力して <kbd>Enter</kbd> を押すと、そのセルへ移動します (<kbd>Ctrl</kbd>+<kbd>K</kbd>)。</td></tr>
+  <tr><td>6</td><td>ファイルとリボンのタブ</td><td>ファイルはファイル メニューを開きます。タブでリボンを切り替えます: ホーム、書式、数式、校閲、表示、ヘルプ。</td></tr>
+  <tr><td>7</td><td>ブックのボタン</td><td>リボンの折りたたみ、ヘルプの表示、ブックの最小化、元に戻す、閉じる。</td></tr>
+  <tr><td>8</td><td>リボン</td><td>選んだタブでよく使うコマンドを、ほかのオフィス ソフトと同じようにグループにまとめています。</td></tr>
+  <tr><td>9</td><td>数式バー</td><td>選択したセルの番地と実際の内容を表示します。ここで編集して <kbd>Enter</kbd> を押すか <b>適用</b> をクリックします。</td></tr>
+  <tr><td>10</td><td>ナビゲーション</td><td>シート、テンプレート、Lua ワークスペース、AI アシスタント、設定。</td></tr>
+  <tr><td>11</td><td>グリッド</td><td>セルの領域です。アクティブ セルには緑の枠と、角に小さなフィル ハンドルが付きます。</td></tr>
+  <tr><td>12</td><td>シート ボタンと集計</td><td>ワークシートを切り替えます。隣には選択したセルの個数、合計、平均が表示されます。</td></tr>
+  <tr><td>13</td><td>ステータス バー</td><td>入力済みセルの数、<b>シートチェック</b> のバッジ、メッセージ、ズーム スライダー。</td></tr>
+</table>
+
+<h2>4. データの入力と編集</h2>
+<h3>セルの選択</h3>
+<ul>
+  <li>セルをクリックして選択します。矢印キー、<kbd>Tab</kbd>、<kbd>Page Up</kbd>、<kbd>Page Down</kbd> で移動します。</li>
+  <li>別のセルを <kbd>Shift</kbd>+クリックすると、その間の長方形の範囲が選択されます。</li>
+  <li>行番号をクリックすると行全体が選択されます。<kbd>Ctrl</kbd>+クリックで行を追加または解除し、<kbd>Shift</kbd>+クリックで連続した行を選択します。</li>
+  <li><kbd>Ctrl</kbd>+<kbd>Home</kbd> で A1 に移動します。編集メニューの <b>使用範囲を選択</b> は、データのある範囲をすべて選択します。</li>
+</ul>
+<h3>値の入力と変更</h3>
+<ol class="steps">
+  <li>セルをダブルクリックするか <kbd>F2</kbd> を押します。数式バーをクリックしてもかまいません。</li>
+  <li>数値、文字列、<code>TRUE</code>、<code>FALSE</code>、または <code>=</code> で始まる数式を入力します。</li>
+  <li><kbd>Enter</kbd> で変更が確定し、<kbd>Esc</kbd> で取り消します。</li>
+</ol>
+<div class="tip"><b>ヒント.</b> <code>=</code> で始まる文字列や数値に見える文字列をそのまま保存するには、先頭にアポストロフィを付けます。たとえば <code>'=hello</code> や <code>'00123</code> は入力したとおりに保持されます。</div>
+<p>長い文字列は自分のセル内だけに表示され、末尾が「...」になります。セルにマウスを合わせるか数式バーを見ると全体を確認できます。セルより広い数値は読み間違えないように <code>###</code> と表示されます。ズームするか数式バーで確認してください。</p>
+<h3>元に戻すとやり直し</h3>
+<p><kbd>Ctrl</kbd>+<kbd>Z</kbd> で元に戻し、<kbd>Ctrl</kbd>+<kbd>Y</kbd> でやり直します。クイック アクセスのボタンでも操作できます。貼り付け、並べ替え、マクロは 1 回の操作で元に戻ります。</p>
+<h3>コピー、切り取り、貼り付け</h3>
+<ul>
+  <li><kbd>Ctrl</kbd>+<kbd>C</kbd> でコピー、<kbd>Ctrl</kbd>+<kbd>X</kbd> で切り取り、<kbd>Ctrl</kbd>+<kbd>V</kbd> で貼り付けます。一度にコピーできるのは最大 10,000 セルです。</li>
+  <li><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> は、数式や書式なしで値だけを貼り付けます。</li>
+  <li>Julretsu 内でコピーすると数式と書式も保たれます。相対参照は貼り付け先に合わせて変わり、<code>$</code> を付けた参照は固定されます。</li>
+  <li>Web ページの行やほかのスプレッドシートなど、別のプログラムからコピーした文字列も貼り付けられます。</li>
+</ul>
+<h3>連続データの入力</h3>
+<p>選択範囲の角にある小さな四角を下または右にドラッグします。数式は参照が調整された状態でコピーされます。5 と 10 のように数値 2 つから始めると、Julretsu が 15、20、25 と連続データを続けます。<b>ホーム、編集、フィル</b> から下方向や右方向にコピーすることもできます。</p>
+<h3>検索</h3>
+<p><kbd>Ctrl</kbd>+<kbd>F</kbd> を押すと、現在のシートの値と数式を検索します。<b>次を検索</b> をクリックすると、一致するセルを順に確認できます。</p>
+
+<h2>5. 数式</h2>
+<p>数式は <code>=</code> で始まり、参照しているセルが変わると自動的に再計算されます。たとえばサンプルの予算では、E4 セルに <code>=C4*D4</code>、つまり数量 × 単価が入っています。</p>
+<h3>基本の要素</h3>
+<table>
+  <tr><th>使えるもの</th><th>例</th></tr>
+  <tr><td>数値、引用符で囲んだ文字列、TRUE と FALSE</td><td><code>=42</code>、<code>="Paid"</code>、<code>=TRUE</code></td></tr>
+  <tr><td>セル参照と範囲</td><td><code>=B2</code>、<code>=SUM(B2:B9)</code>、<code>=SUM(A1:C3)</code></td></tr>
+  <tr><td>四則演算</td><td><code>+ - * /</code> とかっこ (例: <code>=(B2+B3)*1.2</code>)</td></tr>
+  <tr><td>比較</td><td><code>= &lt;&gt; &lt; &lt;= &gt; &gt;=</code> (例: <code>=B2&gt;100</code>)</td></tr>
+</table>
+<h3>関数</h3>
+<table>
+  <tr><th>関数</th><th>はたらき</th><th>例</th></tr>
+  <tr><td><code>SUM</code></td><td>数値を合計します。文字列と空のセルは無視されます。</td><td><code>=SUM(E4:E9)</code></td></tr>
+  <tr><td><code>AVERAGE</code></td><td>範囲内の数値の平均です。</td><td><code>=AVERAGE(D4:D9)</code></td></tr>
+  <tr><td><code>IF</code></td><td>2 つの結果から 1 つを選びます。条件、真のときの結果、偽のときの結果の 3 つが必ず必要です。</td><td><code>=IF(E4&gt;1000,"Review","OK")</code></td></tr>
+  <tr><td><code>SHEET</code></td><td>別のワークシートのセルを読みます。</td><td><code>=SHEET("Budget","E11")</code></td></tr>
+  <tr><td><code>LUA</code></td><td>短い Lua の計算を実行します。</td><td><code>=LUA("return cell('E11') * 1.05")</code></td></tr>
+</table>
+<p>列を合計する一番早い方法は、列を選んで <b>ホーム、編集、オート SUM、合計</b> を選ぶことです。Julretsu が選択範囲のすぐ下に <code>SUM</code> の数式を入れます。</p>
+<h3>数式にエラーが表示されたら</h3>
+<table>
+  <tr><th>表示</th><th>意味</th></tr>
+  <tr><td><code>#DIV/0!</code></td><td>0 で割ったか、数値のない範囲の平均を求めました。</td></tr>
+  <tr><td><code>#VALUE!</code></td><td>数値が必要な場所に文字列が使われています。</td></tr>
+  <tr><td><code>#REF!</code></td><td>参照がシートの外を指しています。</td></tr>
+  <tr><td><code>#NAME?</code></td><td>関数名が不明です。</td></tr>
+  <tr><td><code>#CYCLE!</code></td><td>数式が直接、またはほかのセルを通じて自分自身を参照しています。</td></tr>
+  <tr><td><code>#NUM!</code></td><td>結果が大きすぎて表せません。</td></tr>
+  <tr><td><code>#PARSE!</code></td><td>数式を読み取れませんでした。かっこと引用符を確認してください。</td></tr>
+</table>
+<div class="tip"><b>ヒント.</b> <b>表示、数式の表示</b> をオンにすると、結果ではなくすべての数式がグリッドに表示されます。</div>
+
+<h2>6. シートの書式設定</h2>
+<p><b>ホーム</b> リボンには、ふだん使う書式のツールがそろっています。選択したセルに適用され、行番号をクリックして行全体を選んだ場合はその行に適用されます。</p>
+<table>
+  <tr><th>グループ</th><th>ツール</th></tr>
+  <tr><td>クリップボード</td><td>貼り付け (または値の貼り付け)、切り取り、コピー。</td></tr>
+  <tr><td>フォント</td><td>フォント、サイズ、拡大と縮小、太字、罫線、塗りつぶしの色、フォントの色。</td></tr>
+  <tr><td>配置</td><td>左揃え、中央揃え、右揃え、または自動 (数値は右、文字列は左)。</td></tr>
+  <tr><td>数値</td><td>標準、数値、通貨、パーセンテージ、日付、桁区切りの表示形式と、小数点以下の桁数の増減。</td></tr>
+  <tr><td>スタイル</td><td>良い、悪い、どちらでもない、タイトル、見出し、合計、入力、メモなどの既定のセル スタイルと、見出し行と縞模様の行があるテーブル スタイル。</td></tr>
+  <tr><td>セル</td><td>行、列、ワークシートの挿入と削除、セルの書式設定を開きます。</td></tr>
+  <tr><td>編集</td><td>オート SUM、フィル、クリア、並べ替えとフィルター、検索と選択。</td></tr>
+</table>
+<h3>セルの書式設定ダイアログ</h3>
+<p>細かく指定するには <b>書式、選択したセルの書式設定</b> (または <b>セル、書式、セルの書式設定</b>) を選びます。フォントの種類 (ゴシック体、明朝体、等幅)、サイズ、太字、罫線、配置、表示形式、小数点以下の桁数、文字色と塗りつぶしの色を設定できます。</p>
+<figure><img src="images-ja/format-cells.png" alt="Format cells dialog"><figcaption>セルの書式設定: すべての書式オプションが 1 か所に</figcaption></figure>
+<h3>表示形式</h3>
+<table>
+  <tr><th>表示形式</th><th>1234.5 の表示</th></tr>
+  <tr><td>標準</td><td>1234.5</td></tr>
+  <tr><td>数値 (小数 2 桁)</td><td>1234.50</td></tr>
+  <tr><td>通貨</td><td>$1,234.50</td></tr>
+  <tr><td>桁区切り</td><td>1,234.50</td></tr>
+  <tr><td>パーセンテージ (0.25、小数 0 桁)</td><td>25%</td></tr>
+  <tr><td>日付</td><td>Excel 形式の日付シリアル値を日付として表示します (例: 2026-09-20)</td></tr>
+</table>
+<h3>行全体の書式設定</h3>
+<p><b>書式</b> タブには行全体に使える手早いツールがあります。行を太字に、緑の塗りつぶし、小数点以下の増減、リセットです。見出し行や合計行に便利です。</p>
+<h3>ワンクリックで表を書式設定</h3>
+<p>見出し行を含めて表を選び、<b>ホーム、スタイル、テーブル スタイル</b> から色を選びます。Julretsu が見出しを太字にして色を付け、罫線を引き、1 行おきに色を敷きます。</p>
+
+<h2>7. 行、列、並べ替え、フィルター</h2>
+<h3>挿入と削除</h3>
+<p>セルを選んでから <b>ホーム、セル、挿入</b> または <b>削除</b> を使います (<b>データ</b> メニューにもあります)。行は選択したセルの上に、列は左に挿入されます。ほかの場所の数式は、正しいセルを指したままになるように更新されます。</p>
+<div class="note"><b>メモ.</b> Julretsu は、ほかの数式が参照している行や列を削除しません。黙って数式が壊れてしまうからです。また <code>SHEET</code> と <code>LUA</code> の参照は自動で調整できないため、挿入や削除の前に取り除くよう案内します。</div>
+<h3>並べ替え</h3>
+<ol class="steps">
+  <li>並べ替える行を選びます。その行に属する列をすべて含め、見出し行は含めません。</li>
+  <li>並べ替えの基準にする列のセルをクリックして、アクティブ セルにします。</li>
+  <li><b>ホーム、編集、並べ替えとフィルター</b> を選び、<b>昇順</b> または <b>降順</b> を選びます。</li>
+</ol>
+<div class="tip"><b>セーフティ ネット.</b> 選択範囲の隣の列に同じ行のデータがあると、Julretsu がすぐに知らせます。表の一部だけを並べ替えると行がずれてしまうからです。<b>変更を元に戻す</b> を選び、表全体を選択し直してください。</div>
+<h3>フィルター</h3>
+<p>フィルターをかけたい列のセルをクリックし、<b>データ、アクティブな列でフィルター</b> を選んで探す文字を入力します。その文字を含む行だけが表示され (大文字と小文字は区別されます)、1 行目は見出しとして常に表示されます。すべて表示に戻すには <b>データ、フィルターを解除</b> を選びます。フィルターでデータが削除されることはありません。非表示の行を守るため、並べ替え、貼り付け、削除の前にはフィルターを解除してください。</p>
+<h3>見出しの固定</h3>
+<p><b>表示</b> メニューで <b>先頭行の固定</b>、<b>先頭列の固定</b>、またはその両方を選ぶと、スクロールしても見出しが表示されたままになります。</p>
+
+<h2>8. 複数のワークシートを使う</h2>
+<p>1 つのブックにワークシートを最大 64 枚まで入れられます。グリッド左下のシート ボタンでシートを切り替え、<b>ブック、シートの管理</b> で追加、複製、名前の変更、並べ替え、削除ができます。</p>
+<p>別のシートの値を使うには、<code>SHEET</code> にシート名とセル番地を引用符付きで指定します (例: <code>=SHEET("Q1 Sales","B12")</code>)。シート名を変更したら、数式の中の名前も更新してください。</p>
+<div class="warn"><b>注意.</b> ワークシートを削除すると、その内容はすべて失われ、元に戻せません。Julretsu は先に確認を求めます。</div>
+
+<h2>9. 保存、開く、回復</h2>
+<h3>Julretsu のブック</h3>
+<p><kbd>Ctrl</kbd>+<kbd>S</kbd>、クイック アクセスの保存ボタン、または <b>ファイル、保存</b> で保存します。初回はフォルダーと名前を指定します。別のコピーとして保存するには <b>ファイル、名前を付けて保存</b> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>) を使います。ブックは <kbd>Ctrl</kbd>+<kbd>O</kbd> で開くか、<code>.julretsu</code> ファイルをダブルクリックして開きます。</p>
+<p><code>.julretsu</code> ファイルには、値、数式、書式、すべてのワークシート、Lua スクリプト、変更履歴がすべて保存されます。未保存の変更があるブックを閉じたり置き換えたりするときは、Julretsu が必ず確認します。</p>
+<figure class="small"><img src="images-ja/file-menu.png" alt="File menu"><figcaption>ファイル メニュー</figcaption></figure>
+<h3>自動回復</h3>
+<p>未保存の作業が 1 分続くと、Julretsu は静かに回復用のコピーを作り、1 分ごとに更新します。Julretsu やコンピューターが不意に終了した場合、次回起動時にそのコピーを復元するか尋ねます。<b>復元</b> を選び、<b>名前を付けて保存</b> でブックを保存してください。通常どおり保存または終了すると、回復用のコピーは削除されます。<b>ブック</b> メニューからオフにしたり、手動で開いたりもできます。</p>
+
+<h2>10. CSV と Excel のファイル</h2>
+<h3>CSV ファイル</h3>
+<p><b>ファイル、CSV のインポート</b> と <b>ファイル、CSV のエクスポート</b> を使います。Julretsu は UTF-8 の CSV ファイルを読み書きし、カンマ、引用符、複数行を含む値にも対応します。インポート時は数値と TRUE、FALSE が認識され、それ以外は文字列になります。CSV ファイル内の数式が実行されることはありません。</p>
+<p>エクスポートした CSV ファイルには計算結果が入ります。<code>=</code>、<code>+</code>、<code>-</code>、<code>@</code> で始まる文字列は先頭にアポストロフィを付けて保護するため、ほかのスプレッドシート ソフトが数式として実行することはありません。</p>
+<h3>Excel のブック</h3>
+<p><b>ファイル、Excel のインポート</b> は <code>.xlsx</code> ファイルの最初のワークシートを読み込みます。Excel が最後に計算した結果を取り込むには <b>保存された値</b> を、四則演算、比較、<code>SUM</code>、<code>AVERAGE</code>、<code>IF</code> を数式のまま残すには <b>対応する数式</b> を選びます。読み込む前に、何が取り込まれ、何が取り込まれないかを Julretsu が正確に表示します。</p>
+<p><b>ファイル、Excel のエクスポート</b> は、現在のワークシートを、対応する数式、太字、色、行ごとの小数書式とともに <code>.xlsx</code> ファイルとして保存します。</p>
+<div class="note"><b>メモ.</b> セルの結合、グラフ、列幅、コメント、ほかのワークシートといった Excel の機能はインポートもエクスポートもされません。すべてを保持するには <code>.julretsu</code> のコピーを残してください。</div>
+
+<h2>11. セーフティ ネット</h2>
+<p>Julretsu は、高くつくスプレッドシートのミスの裏にある日常的な間違いに目を配ります。作業を止めることはありません。どこがおかしく見えるかを説明し、判断はあなたに任せます。</p>
+<h3>危険な変更は確定する前に確認</h3>
+<p>大きな貼り付け、フィル、クリア、マクロのあと、データの入っていた行や列を削除したあと、隣の列を残したまま並べ替えたあと、または数式が上書きされたとき、Julretsu は <b>この変更を確認</b> を表示します。変更はすでにシートに反映されており、ダイアログには影響を受けたセルが変更前と変更後の値とともに並びます。</p>
+<ul>
+  <li><b>変更を保持</b> (<kbd>Enter</kbd>) でそのまま残します。</li>
+  <li><b>変更を元に戻す</b> (<kbd>Esc</kbd>) ですべてが元どおりになります。</li>
+</ul>
+<figure><img src="images-ja/review.png" alt="Review this change"><figcaption>大きな貼り付けのあとに表示される変更の確認</figcaption></figure>
+<p><b>校閲</b> タブでは、何個のセルが変わったら確認するかを決めたり、確認をオフにしたりできます。一部だけの並べ替え、削除されたデータ、置き換えられた数式、桁違いの数値は常に確認します。</p>
+<figure><img src="images-ja/review-tab.png" alt="Review tab"><figcaption>校閲タブ</figcaption></figure>
+<h3>入力ミスの即時チェック</h3>
+<p>同じ列のほかの値よりはるかに大きい、または小さい数値を入力すると (たとえば 450 前後の金額が並ぶ列に 4500000)、ステータス バーがすぐに知らせます。入力ミスなら <kbd>Ctrl</kbd>+<kbd>Z</kbd> を押してください。</p>
+<h3>シートチェック</h3>
+<p>ステータス バーの <b>シートチェック</b> バッジは、シートに問題があるかどうかを常に表示します。バッジをクリックするか <b>校閲、シートをチェック</b> を選ぶとパネルが開きます。Julretsu は次のものを探します:</p>
+<ul>
+  <li>同じ数式が続く列の中にある、直接入力された数値や異なる数式</li>
+  <li>隣の数値を取りこぼしている <code>SUM</code> や <code>AVERAGE</code> の範囲</li>
+  <li>同じ列のほかの値と桁が大きく違う数値</li>
+  <li>合計が黙って飛ばしてしまう、文字列として保存された数値</li>
+  <li>表を分断し、並べ替えやフィルターを止めてしまう空白行</li>
+</ul>
+<p>それぞれの問題には <b>移動</b>、安全な修正がある場合のワンクリック修正、<b>無視</b> があります。赤い点は、誤った結果になりやすい問題です。修正はすべて元に戻せます。</p>
+<figure><img src="images-ja/sheet-check.png" alt="Sheet check panel"><figcaption>合計列の直接入力された値と、行が抜けた合計を見つけたシートチェック</figcaption></figure>
+<h3>セルの履歴と変更履歴</h3>
+<p>セルを右クリックして <b>セルの履歴</b> を選ぶか、<b>校閲、セルの履歴</b> を使うと、そのセルのすべての変更を確認できます。いつ、何によって変わったのか、変更前と変更後の値が表示されます。<b>校閲、変更履歴</b> はシート上のすべての変更を一覧にします。</p>
+<figure><img src="images-ja/cell-history.png" alt="Cell history"><figcaption>1 つのセルの履歴</figcaption></figure>
+<p>履歴は <code>.julretsu</code> ファイルの中に保存されるので、ブックと一緒に移動します。Julretsu は直近 1,000 件の変更を保持し、非常に大きな変更は最初の 200 個のセルだけを表示します。ファイルを共有するときに履歴を含めたくない場合は、変更履歴を開いて <b>履歴を消去</b> を選んでください。</p>
+
+<h2>12. グラフ、レポート、PDF</h2>
+<ol class="steps">
+  <li>レポートに入れるセルを選びます。セルを 1 つだけ選んだ場合、Julretsu はシート上の入力済みセルをすべて使います。</li>
+  <li><b>レポート、選択範囲のグラフ / 印刷</b> を選びます。</li>
+  <li>レポートのタイトルを入力し、グラフにする数値が入っている <b>グラフにする列</b> を選びます。棒グラフか折れ線グラフ、縦向きか横向き、先頭行を各ページで繰り返すかどうかも選べます。</li>
+  <li><b>グラフと表をエクスポート (HTML)</b> をクリックして保存先を選びます。Web ブラウザーで開くとグラフと表を一緒に見られ、ブラウザーの <b>印刷</b> で印刷したり PDF として保存したりできます。Windows、Mac、Linux のいずれでも使えます。</li>
+  <li>Windows では <b>印刷 / PDF として保存</b> をクリックして直接印刷することもできます。PDF にするにはプリンターとして <b>Microsoft Print to PDF</b> を選びます。</li>
+</ol>
+<figure><img src="images-ja/chart-report.png" alt="Chart and print preview"><figcaption>グラフと印刷プレビュー</figcaption></figure>
+<div class="note"><b>メモ.</b> レポートには最大 12 列、10,000 セルを含められ、グラフにはグラフ列の数値を最大 1,000 個まで使います。数値が 1 つだけのときは、見やすいように 1 本の棒で表示します。レポートはその時点の写しで、ブックには保存されません。エクスポートした HTML ファイルには必要なものがすべて入っているので、メールで送ったり別のコンピューターで開いたりできます。</div>
+<h3>サンプル テンプレート</h3>
+<p>ナビゲーション バーの <b>テンプレート</b> をクリックすると、架空のサンプル データと動く数式が入ったブックを開けます。<b>サンプル ブック</b> の一覧から選び、<b>選択したテンプレートを使う</b> をクリックします。Julretsu は現在のブックを先に保存するか尋ねます。</p>
+<table>
+  <tr><th>テンプレート</th><th>内容</th></tr>
+  <tr><td>プロジェクト予算</td><td>カテゴリ別の予定費用と実際の費用、合計と差額。</td></tr>
+  <tr><td>月別売上</td><td>12 か月分のオンライン売上と店舗売上を目標と比較します。折れ線グラフ向きです。</td></tr>
+  <tr><td>家計の支出</td><td>カテゴリ別の予定額と実際の支出、残額。</td></tr>
+  <tr><td>在庫計画</td><td>在庫数、発注点、単価、製品ごとの在庫金額。</td></tr>
+  <tr><td>週ごとのプロジェクト時間</td><td>12 週間のデザイン、開発、テストの時間と週ごとの合計。</td></tr>
+</table>
+<p>テンプレートはグラフを手早く試すのに向いています。テンプレートを開いて表を選び、<b>レポート、選択範囲のグラフ / 印刷</b> を選んでください。</p>
+
+<h2>13. Lua マクロ</h2>
+<p>Lua マクロは繰り返しの編集を自動化します。ナビゲーション バーの <b>Lua ワークスペース</b>、または <b>ホーム、アシスト、Lua スクリプト</b> から開きます。</p>
+<ul>
+  <li><code>cell('A1')</code> は、マクロが始まる前のセルの値を読みます。</li>
+  <li><code>set('A1', value)</code> は変更を予約します。</li>
+  <li><b>マクロを実行</b> をクリックします。すべての変更がまとめて適用され、<b>マクロを元に戻す</b> で一度に戻せます。</li>
+</ul>
+<p>次の例は、予算のすべての数量に 1 を足します。</p>
+<p><code>for row = 4, 9 do set('C' .. row, cell('C' .. row) + 1) end</code></p>
+<figure><img src="images-ja/lua.png" alt="Lua workspace"><figcaption>Lua ワークスペース</figcaption></figure>
+<div class="note"><b>メモ.</b> マクロは、ファイル、ネットワーク、コンピューターのほかの部分にアクセスできない安全なサンドボックスで、時間とメモリの制限付きで実行されます。失敗したマクロはシートを変更しません。スクリプトはブックとともに保存されますが、ひとりでに実行されることはありません。</div>
+
+<h2>14. AI アシスタント (任意)</h2>
+<p>Julretsu はインターネットなしで完全に動作します。必要なら、ご自分の AI プロバイダーに接続し、「合計の下に 10% の予備費の行を追加して」のようにふだんの言葉で変更を依頼できます。</p>
+<ol class="steps">
+  <li>ナビゲーション バーの <b>AI アシスタント</b>、または <b>ホーム、アシスト、AI に聞く</b> を開きます。</li>
+  <li><b>接続</b> で <b>Anthropic (Claude)</b> か、OpenAI、Ollama、LM Studio などの <b>OpenAI 互換</b> サーバーを選び、モデル名を入力して API キーを保存します。</li>
+  <li>変更したい内容を説明し、<b>編集を提案</b> をクリックします。</li>
+  <li>提案された編集を変更前と変更後の値とともに確認し、不要なもののチェックを外して <b>適用</b> をクリックします。</li>
+</ol>
+<figure><img src="images-ja/ai-assistant.png" alt="AI assistant"><figcaption>AI アシスタントのパネル</figcaption></figure>
+<ul>
+  <li>API キーは Windows 資格情報マネージャーがユーザー アカウントごとに保管し、ブックや設定ファイルには保存されません。</li>
+  <li>送信する前に、何個のセルがどのサーバーへ送られるかをパネルが知らせます。送信される入力済みセルは最大 2,000 個です。</li>
+  <li>Lua の数式を含む編集は、最初はチェックが外れています。[適用] をクリックするまで何も変わらず、<kbd>Ctrl</kbd>+<kbd>Z</kbd> 一回で提案全体を元に戻せます。</li>
+  <li>利用料金はプロバイダーからご自身のアカウントに請求されます。</li>
+</ul>
+<div class="note"><b>メモ.</b> AI 接続は現在 Windows 版の Julretsu でのみ利用できます。</div>
+
+<h2>15. 言語、表示、テーマ</h2>
+<h3>言語を選ぶ</h3>
+<p>Julretsu は英語、韓国語、日本語に対応しています。初回起動時はコンピューターの言語に従います。変更するには、ナビゲーション バーの <b>設定</b> をクリックして <b>言語</b> から選ぶか、<b>表示、言語</b> を使います。選んだ言語はこのデバイスに保存されます。</p>
+<figure><img src="images-ja/language-korean.png" alt="Julretsu in Korean"><figcaption>同じブックをインターフェイス韓国語で表示したところ</figcaption></figure>
+<p>言語の設定は、メニュー、ボタン、メッセージ、シートチェック、エクスポートしたレポート、新しく作るサンプル ブックに適用されます。ご自分で入力したセルの内容や、すでに保存したブックが翻訳されることはありません。</p>
+<p>どの言語設定でも、ふだんお使いの入力方式で韓国語と日本語をどのセルにも入力できます。Julretsu は必要な文字をコンピューターにインストールされたフォントから読み込むので、どのズーム倍率でも文字がくっきり表示されます。</p>
+<div class="note"><b>メモ.</b> Linux では、韓国語と日本語の文字を表示できるように Noto Sans CJK などの CJK フォントをインストールしてください (Ubuntu や Debian: <code>sudo apt install fonts-noto-cjk</code>)。Windows と macOS には最初から含まれています。</div>
+<h3>ダーク モード</h3>
+<p>右上の <b>ダーク モード</b> をクリックするか、<b>表示、ダーク テーマ</b> を使います。Julretsu は選択を記憶します。</p>
+<figure><img src="images-ja/dark-mode.png" alt="Dark mode"><figcaption>ダーク モードの Julretsu</figcaption></figure>
+<h3>そのほかの表示オプション</h3>
+<ul>
+  <li><b>ズーム</b>: 右下のスライダーをドラッグして 75% から 150% まで調整します。</li>
+  <li><b>目盛線</b> と <b>数式の表示</b>: 表示メニューと表示タブにあります。</li>
+  <li><b>長い文字列を空のセルにはみ出して表示</b>: 昔のスプレッドシートのように、長い文字列が隣の空のセルまで続いて表示されます。</li>
+  <li><b>リボンを折りたたむ</b>: リボンのタブの横にある矢印をクリックすると表示が広くなります。どれかのタブをクリックすると元に戻ります。</li>
+</ul>
+<h3>ブックのウィンドウ ボタン</h3>
+<p>リボンのタブの右にあるボタンはブック自体を操作します。<b>最小化</b> はウィンドウ下部の小さなバーに縮め、<b>元に戻す</b> は Julretsu の中で移動やサイズ変更ができるウィンドウにし、<b>閉じる</b> はブックを閉じて (先に保存するか尋ねます) 空のブックを開きます。</p>
+<figure><img src="images-ja/workbook-floating.png" alt="Restored workbook window"><figcaption>Julretsu の中で元のサイズに戻したブックのウィンドウ</figcaption></figure>
+
+<h2>16. ショートカット キー</h2>
+<p>Mac では、この表の <kbd>Ctrl</kbd> を <kbd>Cmd</kbd> に読み替えてください。</p>
+<table>
+  <tr><th>操作</th><th>キー</th></tr>
+  <tr><td>新規作成、開く、保存、名前を付けて保存</td><td><kbd>Ctrl</kbd>+<kbd>N</kbd>、<kbd>Ctrl</kbd>+<kbd>O</kbd>、<kbd>Ctrl</kbd>+<kbd>S</kbd>、<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></td></tr>
+  <tr><td>元に戻す、やり直し</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd>、<kbd>Ctrl</kbd>+<kbd>Y</kbd></td></tr>
+  <tr><td>コピー、切り取り、貼り付け、値の貼り付け</td><td><kbd>Ctrl</kbd>+<kbd>C</kbd>、<kbd>Ctrl</kbd>+<kbd>X</kbd>、<kbd>Ctrl</kbd>+<kbd>V</kbd>、<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd></td></tr>
+  <tr><td>選択したセルを編集</td><td><kbd>F2</kbd> またはダブルクリック</td></tr>
+  <tr><td>編集を確定またはキャンセル</td><td><kbd>Enter</kbd>、<kbd>Esc</kbd></td></tr>
+  <tr><td>内容のクリア</td><td><kbd>Delete</kbd></td></tr>
+  <tr><td>アクティブ セルの移動</td><td>矢印キー、<kbd>Tab</kbd>、<kbd>Page Up</kbd>、<kbd>Page Down</kbd></td></tr>
+  <tr><td>先頭のセル、最後のセル</td><td><kbd>Ctrl</kbd>+<kbd>Home</kbd>、<kbd>Ctrl</kbd>+<kbd>End</kbd></td></tr>
+  <tr><td>セルへ移動</td><td><kbd>Ctrl</kbd>+<kbd>K</kbd></td></tr>
+  <tr><td>検索</td><td><kbd>Ctrl</kbd>+<kbd>F</kbd></td></tr>
+  <tr><td>範囲を選択</td><td><kbd>Shift</kbd>+クリック</td></tr>
+  <tr><td>選択範囲に行を追加または解除</td><td>行番号を <kbd>Ctrl</kbd>+クリック</td></tr>
+  <tr><td>行のスクロール、列のスクロール</td><td>マウス ホイール、<kbd>Shift</kbd>+マウス ホイール</td></tr>
+  <tr><td>確認した変更を保持または取り消し</td><td><kbd>Enter</kbd>、<kbd>Esc</kbd></td></tr>
+</table>
+
+<h2>17. 困ったときは</h2>
+<table>
+  <tr><th>症状</th><th>対処</th></tr>
+  <tr><td>インストール時に Windows が「WindowsによってPCが保護されました」と表示する。</td><td><b>詳細情報</b> をクリックしてから <b>実行</b> をクリックします。第 2 章を参照してください。</td></tr>
+  <tr><td>macOS が Julretsu を悪質なソフトウェアかどうか確認できないと表示する。</td><td>アプリケーションの Julretsu を Control キーを押しながらクリックして <b>開く</b> を選ぶか、プライバシーとセキュリティで <b>このまま開く</b> を使います。</td></tr>
+  <tr><td>Linux で zenity や kdialog に関するメッセージが出る。</td><td>どちらかをインストールします: <code>sudo apt install zenity</code>。Julretsu が開く / 保存のダイアログに使います。</td></tr>
+  <tr><td>Julretsu が起動せず、OpenGL やグラフィックスのメッセージが出る。</td><td>グラフィックス ドライバーを更新してください。Julretsu は Windows と Linux で OpenGL 3.3 を必要とします。</td></tr>
+  <tr><td>セルに <code>###</code> と表示される。</td><td>数値がセルの幅より大きいためです。ズームするか、数式バーで確認してください。</td></tr>
+  <tr><td>数式にエラー コードが表示される。</td><td>第 5 章のエラー一覧を確認し、シートチェックのパネルも見てください。</td></tr>
+  <tr><td>並べ替え、貼り付け、削除ができない。</td><td>先に有効なフィルターを解除してください (<b>データ、フィルターを解除</b>)。</td></tr>
+  <tr><td>行の挿入が拒否される。</td><td>先に <code>SHEET</code> や <code>LUA</code> の参照を取り除いてください。これらは自動で調整できません。</td></tr>
+  <tr><td>Julretsu を起動すると回復の確認が表示される。</td><td>前回 Julretsu が不意に終了しました。作業を取り戻すには <b>復元</b> を、コピーを破棄するには <b>現在のブックを保持</b> を選びます。</td></tr>
+  <tr><td><code>.julretsu</code> ファイルをダブルクリックしても Julretsu が開かない。</td><td>Windows ではインストーラーをもう一度実行し、<b>.julretsu のブックを Julretsu で開く</b> にチェックを入れます。Mac では <b>ファイル、開く</b> から開いてください。</td></tr>
+</table>
+
+<h2>18. Julretsu のアンインストール</h2>
+<ul>
+  <li><b>Windows:</b> <b>設定、アプリ、インストールされているアプリ</b> で Julretsu を見つけ、<b>アンインストール</b> を選びます。インストール フォルダーの <b>Uninstall Julretsu</b> を使うこともできます。</li>
+  <li><b>Mac:</b> アプリケーションから Julretsu をゴミ箱にドラッグします。</li>
+  <li><b>Linux (.deb):</b> <code>sudo apt remove julretsu</code> を実行します。</li>
+  <li><b>Linux (.tar.gz):</b> 展開したフォルダーを削除します。</li>
+</ul>
+<p>アンインストールしてもブックは削除されません。外観の設定はユーザーの設定フォルダーに保存され、必要なら手動で削除できます。</p>
+
+<h2>19. ライセンスとお問い合わせ</h2>
+<p>Julretsu は Julretsu ソフトウェア ライセンスのもとで無料で使えます。個人、教育、業務の作業のためにインストールして使用でき、作成したブックはあなたのものです。Julretsu 自体は Matthew Menchinton と Circuitspecter Studio の所有物のままです。オープンソースではなく、販売、再配布、改変はできません。ライセンス全文はインストーラーに表示され、<code>LICENSE</code> ファイルとしても含まれています。</p>
+<p>Julretsu には、それぞれのライセンスに従うサードパーティ コンポーネントが含まれており、<code>THIRD_PARTY_NOTICES.md</code> に記載しています: Dear ImGui、GLFW、Lua、sol2、stb、miniz、pugixml。</p>
+<p>ご質問や許諾のご依頼は <b>github.com/Deathbringer98</b> から所有者へご連絡ください。</p>
+<p style="margin-top:30pt;color:var(--muted)">Julretsu 1.1.0 ユーザー マニュアル. Copyright (c) 2026 Matthew Menchinton &amp; Circuitspecter Studio. All rights reserved.</p>
+
+</body>
+</html>

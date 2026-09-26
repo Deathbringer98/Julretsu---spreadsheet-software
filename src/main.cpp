@@ -338,14 +338,15 @@ int main(int argc,char** argv) {
             if(!tool_check.smoke_safety_net(capture+"-safety.julretsu")) throw std::runtime_error("Safety net smoke checks failed");
             std::cout<<"Safety net: typed outliers, change review, formula overwrite, partial sort, sheet check fix, saved history passed\n";
             std::cout<<"Selection tools: totals, overwrite protection, fill, undo, search, statistics passed\n";
+            if(!tool_check.smoke_validation_import())throw std::runtime_error("Validation import regression failed");
             std::cout<<"branding_assets_loaded="<<branding.loaded()<<"\n";
             if(!branding.loaded()) return 3;
         }
         std::vector<double> frames; frames.reserve(400);
         std::size_t cpp_allocations=0,imgui_allocations=0,grid_allocations=0;
         bool quit=false;
-        const int frame_limit=smoke?190:(benchmark?400:(!manual_dir.empty()?100:0));
-        const int warmup=smoke?150:60;
+        const int frame_limit=smoke?205:(benchmark?400:(!manual_dir.empty()?100:0));
+        const int warmup=smoke?164:60;
         int frame=0; bool smoke_ok=true;
         while(!quit) {
             auto start=Clock::now();
@@ -448,6 +449,20 @@ int main(int argc,char** argv) {
                 if(frame==145) { const bool ok=has_glyph(0xD648)&&has_glyph(0xC608); std::cout<<"korean glyphs="<<ok<<"\n"; smoke_ok&=ok; }
                 if(frame==146) { app.change_language(julretsu::Language::Japanese,false); app.load_demo(); }
                 if(frame==149) { const bool ok=has_glyph(0x30DB)&&has_glyph(0x4E88); std::cout<<"japanese glyphs="<<ok<<"\n"; smoke_ok&=ok; }
+                if(frame==151) app.smoke_validation(true);
+                if(frame==155) app.change_language(julretsu::Language::Korean,false);
+                if(frame==159) app.change_language(julretsu::Language::Japanese,false);
+                if(frame==163) app.smoke_validation(false);
+                if(frame==164) { app.change_language(julretsu::Language::English,false); app.smoke_restore_points(true); }
+                if(frame==168) app.change_language(julretsu::Language::Korean,false);
+                if(frame==172) app.change_language(julretsu::Language::Japanese,false);
+                if(frame==176) { app.smoke_restore_points(false); app.smoke_tables(true); app.change_language(julretsu::Language::English,false); }
+                if(frame==180) app.change_language(julretsu::Language::Korean,false);
+                if(frame==184) app.change_language(julretsu::Language::Japanese,false);
+                if(frame==188) { app.smoke_tables(false); app.show_scripts(true); app.change_language(julretsu::Language::English,false); }
+                if(frame==192) app.change_language(julretsu::Language::Korean,false);
+                if(frame==196) app.change_language(julretsu::Language::Japanese,false);
+                if(frame==200) { app.show_scripts(false); app.change_language(julretsu::Language::English,false); }
                 if(frame==150) { app.change_language(julretsu::Language::English,false); app.load_demo(); }
                 if(frame==118) app.smoke_workbook_window(1);
                 if(frame==122) app.smoke_workbook_window(2);
@@ -541,6 +556,18 @@ int main(int argc,char** argv) {
             if(smoke&&frame==130)screenshot(capture+"-sheet-check.bmp",width,height);
             if(smoke&&frame==135)screenshot(capture+"-review.bmp",width,height);
             if(smoke&&frame==141)screenshot(capture+"-long-text.bmp",width,height);
+            if(smoke&&frame==154)screenshot(capture+"-validation-en.bmp",width,height);
+            if(smoke&&frame==158)screenshot(capture+"-validation-ko.bmp",width,height);
+            if(smoke&&frame==162)screenshot(capture+"-validation-ja.bmp",width,height);
+            if(smoke&&frame==167)screenshot(capture+"-restore-en.bmp",width,height);
+            if(smoke&&frame==171)screenshot(capture+"-restore-ko.bmp",width,height);
+            if(smoke&&frame==175)screenshot(capture+"-restore-ja.bmp",width,height);
+            if(smoke&&frame==179)screenshot(capture+"-tables-en.bmp",width,height);
+            if(smoke&&frame==183)screenshot(capture+"-tables-ko.bmp",width,height);
+            if(smoke&&frame==187)screenshot(capture+"-tables-ja.bmp",width,height);
+            if(smoke&&frame==191)screenshot(capture+"-lua-en.bmp",width,height);
+            if(smoke&&frame==195)screenshot(capture+"-lua-ko.bmp",width,height);
+            if(smoke&&frame==199)screenshot(capture+"-lua-ja.bmp",width,height);
             if(smoke&&frame==145)screenshot(capture+"-korean.bmp",width,height);
             if(smoke&&frame==149)screenshot(capture+"-japanese.bmp",width,height);
             if(smoke&&frame==124)screenshot(capture+"-workbook-minimized.bmp",width,height);

@@ -38,8 +38,10 @@ Copy-Item -LiteralPath (Join-Path (DependencySource 'lua' 'lua-5.4.9') 'src\lua.
 Copy-Item -LiteralPath (Join-Path $project 'LICENSE') -Destination $destination -Force
 Copy-Item -LiteralPath (Join-Path $project 'THIRD_PARTY_NOTICES.md') -Destination $destination -Force
 Copy-Item -LiteralPath (Join-Path $project 'docs\QUICKSTART.md') -Destination (Join-Path $destination 'START-HERE.md') -Force
-$manual = Join-Path $project 'docs\Julretsu-User-Manual.pdf'
-if (Test-Path -LiteralPath $manual) { Copy-Item -LiteralPath $manual -Destination $destination -Force }
+foreach ($suffix in '', '-ko', '-ja') {
+    $manual = Join-Path $project "docs\Julretsu-User-Manual$suffix.pdf"
+    if (Test-Path -LiteralPath $manual) { Copy-Item -LiteralPath $manual -Destination $destination -Force }
+}
 Write-Output "Portable Windows app: $destination\Julretsu.exe"
 
 Copy-Item -LiteralPath (Join-Path $project 'tools\Register-Julretsu.ps1') -Destination $destination -Force

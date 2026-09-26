@@ -3,6 +3,7 @@
 #include <cctype>
 #include <stdexcept>
 #include <numeric>
+#include "julretsu/I18n.hpp"
 namespace julretsu {
 std::string adjust_references(std::string_view source,int dr,int dc,int axis,unsigned position,bool deleting) {
     std::string out; bool quoted=false;
@@ -32,6 +33,8 @@ std::string adjust_references(std::string_view source,int dr,int dc,int axis,uns
     return out;
 }
 Batch structural_edit(const Sheet& sheet,bool rows,unsigned position,bool deleting) {
+    if(!sheet.tables().empty())throw std::runtime_error(tr("Remove the table definition before structural edits. Use Add table row to extend it."));
+    if(!sheet.validation_rules().empty()) throw std::runtime_error("Remove validation rules before inserting or deleting rows or columns.");
     Batch b; auto move=[&](CellCoord c)->std::optional<CellCoord> {
         auto& n=rows?c.row:c.column; auto limit=rows?max_rows:max_columns;
         if(deleting&&n==position) return {};
@@ -92,5 +95,57 @@ std::vector<std::vector<std::string>> parse_clipboard(std::string_view text) {
     if(quoted)throw std::runtime_error("Unclosed clipboard quotation.");
     if(!text.empty()&&text.back()!='\n'&&text.back()!='\r')emit();
     return rows;
+}
+}
+
+namespace julretsu {
+namespace {
+std::string table_address(CellCoord c){return std::get<std::string>(to_a1(c));}
+void table_totals(const Sheet& sheet,const StructuredTable& t,Batch& b){
+    if(!t.totals)return;
+    for(unsigned c=t.first.column;c<=t.last.column;++c){
+        bool numbers=false;for(unsigned r=t.first.row+1;r<=t.last.row;++r)if(std::holds_alternative<double>(sheet.read({r,c})))numbers=true;
+        Input input=numbers?Input{FormulaInput{"=SUM("+table_address({t.first.row+1,c})+":"+table_address({t.last.row,c})+")"}}:Input{};
+        b.cells.push_back({{t.last.row+1,c},input});auto style=sheet.cell_style({t.last.row,c});style.bold=true;style.border=true;b.formats.push_back({{t.last.row+1,c},style});
+    }
+}
+}
+Batch create_table(const Sheet& sheet,StructuredTable t){
+    if(!t.first.valid()||!t.last.valid()||t.first.row>=t.last.row||t.first.column>t.last.column||t.last.row+unsigned(t.totals)>=max_rows||std::uint64_t(t.last.row-t.first.row+1)*(t.last.column-t.first.column+1)>100000)throw std::runtime_error(tr("Select a header and at least one data row, up to 100,000 cells."));
+    std::set<std::string> headers;for(unsigned c=t.first.column;c<=t.last.column;++c){auto text=display(sheet.read({t.first.row,c}));if(text.empty()||!headers.insert(text).second)throw std::runtime_error(tr("Table headers must be nonempty and unique."));
+        if(t.totals&&sheet.cell({t.last.row+1,c}))throw std::runtime_error(tr("The space below this table must be empty."));}
+    Batch b;b.tables=sheet.tables();b.tables->push_back(t);
+    for(unsigned c=t.first.column;c<=t.last.column;++c){auto style=sheet.cell_style({t.first.row,c});style.bold=true;style.background=0x1F7A5CFF;style.foreground=0xFFFFFFFF;b.formats.push_back({{t.first.row,c},style});}
+    table_totals(sheet,t,b);return b;
+}
+Batch append_table_row(const Sheet& sheet,std::size_t index){
+    if(index>=sheet.tables().size())throw std::runtime_error(tr("Select a table first."));
+    auto t=sheet.tables()[index];if(t.last.row+1+unsigned(t.totals)>=max_rows)throw std::runtime_error(tr("Invalid table range or name."));
+    for(unsigned c=t.first.column;c<=t.last.column;++c)if(sheet.cell({t.last.row+1+unsigned(t.totals),c}))throw std::runtime_error(tr("The space below this table must be empty."));
+    if(t.totals)for(const auto& [r,row]:sheet.populated_rows())for(const auto& [c,cell]:row)if(cell.formula&&r!=t.last.row+1)for(auto dep:cell.formula->precedents)if(dep.row==t.last.row+1&&dep.column>=t.first.column&&dep.column<=t.last.column)throw std::runtime_error(tr("A formula references the total row. Remove that reference before extending the table."));
+    Batch b;b.table_scaffold=true;b.tables=sheet.tables();++(*b.tables)[index].last.row;b.rules=sheet.validation_rules();
+    for(auto& rule:*b.rules)if(rule.first.row>=t.first.row+1&&rule.first.row<=t.last.row&&rule.last.row==t.last.row&&rule.first.column>=t.first.column&&rule.last.column<=t.last.column)++rule.last.row;
+    for(unsigned c=t.first.column;c<=t.last.column;++c){
+        auto old=sheet.cell({t.last.row,c});Input input{};if(old)if(auto f=std::get_if<FormulaInput>(&old->input))input=FormulaInput{adjust_references(f->source,1,0)};
+        if(t.totals||!std::holds_alternative<std::monostate>(input))b.cells.push_back({{t.last.row+1,c},input});
+        b.formats.push_back({{t.last.row+1,c},sheet.cell_style({t.last.row,c})});
+    }
+    table_totals(sheet,(*b.tables)[index],b);return b;
+}
+Batch expand_tables(const Sheet& sheet,const Batch& requested){
+    if(requested.tables||sheet.tables().empty()||requested.cells.empty())return requested;
+    Batch result=requested;std::optional<std::size_t> grow;
+    for(std::size_t i=0;i<sheet.tables().size();++i){const auto& t=sheet.tables()[i];
+        for(const auto& e:requested.cells)if(e.coord.column>=t.first.column&&e.coord.column<=t.last.column&&e.coord.row==t.last.row+1){
+            if(t.totals)throw std::runtime_error(tr("Use Add table row instead of editing the managed total row."));
+            if(!std::holds_alternative<std::monostate>(e.input)){if(grow&&*grow!=i)throw std::runtime_error(tr("Extend one table at a time."));grow=i;}
+        }
+    }
+    if(!grow)return result;
+    const auto& growing=sheet.tables()[*grow];for(const auto& e:requested.cells)if(e.coord.column>=growing.first.column&&e.coord.column<=growing.last.column&&e.coord.row>growing.last.row+1)throw std::runtime_error(tr("Extend one table row at a time."));
+    auto addition=append_table_row(sheet,*grow);auto t=sheet.tables()[*grow];
+    for(const auto& e:requested.cells)if(e.coord.row==t.last.row+1&&e.coord.column>=t.first.column&&e.coord.column<=t.last.column)for(const auto& rule:sheet.validation_rules())if(rule.locked&&rule.contains({t.last.row,e.coord.column}))throw std::runtime_error(tr("This table column is protected."));
+    // User input wins over copied formulas; normal validation still checks the resulting values.
+    addition.cells.insert(addition.cells.end(),result.cells.begin(),result.cells.end());addition.formats.insert(addition.formats.end(),result.formats.begin(),result.formats.end());addition.rows=result.rows;return addition;
 }
 }

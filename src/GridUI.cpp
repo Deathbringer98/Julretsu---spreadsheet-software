@@ -302,6 +302,9 @@ void GridUI::change_language(Language language,bool remember) {
 void GridUI::note_glyphs() {
     for(const char* buffer:{editor_.data(),search_.data(),find_text_.data(),filter_text_.data(),sheet_name_.data(),report_title_.data(),ai_prompt_.data(),script_.data(),ai_model_.data(),ai_endpoint_.data()}) glyphs::note(buffer);
     for(const auto* text:{&message_,&ai_status_,&file_error_,&recovery_error_,&workbook_name_,&file_label_}) glyphs::note(*text);
+    glyphs::note(lua_result_);glyphs::note(checkpoint_name_.data());glyphs::note(table_name_.data());for(const auto& r:restore_points_)glyphs::note(r.label);for(const auto& d:restore_difference_.details)glyphs::note(d);
+    glyphs::note(validation_choices_.data());
+    for(const auto& rule:sheet_.validation_rules())for(const auto& choice:rule.choices)glyphs::note(choice);
     for(const auto& sheet:sheets_) glyphs::note(sheet.name);
     if(review_) { glyphs::note(review_->label); for(const auto& warning:review_->warnings) glyphs::note(warning); for(const auto& change:review_->cells) { glyphs::note(change.before); glyphs::note(change.after); } }
     if(ai_proposal_) { glyphs::note(ai_proposal_->summary); for(const auto& warning:ai_proposal_->warnings) glyphs::note(warning); for(const auto& e:ai_proposal_->edits) { glyphs::note(e.before); glyphs::note(e.after); } }
@@ -465,6 +468,7 @@ bool GridUI::save_to(const std::filesystem::path& path) {
             if(!result.accepted) {editor_dirty_=true;throw std::runtime_error(result.error->context);}
             modified_=true; selection_changed_=true;
         }
+        if(modified()&&!recovery_disabled_&&std::filesystem::exists(path))create_restore_point(path,read_document(path),tr("Before save"),true);
         if(!save_document_to(path)) return false;
         file_path_=path; workbook_name_=path_label(path.filename()); file_label_=path_label(path);
         modified_=false; editor_dirty_=false; message_="Saved to this device."; discard_recovery(); return true;
@@ -546,7 +550,7 @@ void GridUI::csv_file(bool exporting) {
             std::ifstream in(*chosen,std::ios::binary);if(!in)throw std::runtime_error("Cannot open CSV file.");
             Sheet replacement({},&lua_);replacement.label_next_change("Import CSV");CsvAdapter adapter;StreamOptions options;options.interpretation=ImportInterpretation::Values;
             auto result=adapter.import_sheet(in,replacement,options);if(result.error)throw std::runtime_error(result.error->context);
-            replacement.clear_history();sheet_=std::move(replacement);sheets_.clear();sheets_.push_back({"Sheet 1",Sheet({},&lua_),""});current_sheet_=0;viewport_.filtered=false;viewport_.filtered_rows.clear();file_path_.clear();workbook_name_="Imported CSV";file_label_.clear();script_[0]=0;
+            replacement=checked_import(std::move(replacement));replacement.clear_history();sheet_=std::move(replacement);sheets_.clear();sheets_.push_back({"Sheet 1",Sheet({},&lua_),""});current_sheet_=0;viewport_.filtered=false;viewport_.filtered_rows.clear();file_path_.clear();workbook_name_="Imported CSV";file_label_.clear();script_[0]=0;
             modified_=true;editor_dirty_=false;counted_revision_=~std::uint64_t{};row_selection_.clear();select({0,0});viewport_.first_row=viewport_.first_column=0;
             message_="CSV imported. Numbers and Booleans detected; formulas remain text. Save as .julretsu to keep your work.";
         }
@@ -557,24 +561,29 @@ void GridUI::xlsx_file(bool exporting) {
     try {
         auto chosen=workbook_dialog(exporting,{},native_window,L"xlsx");if(!chosen)return;
         if(exporting) {
-#ifdef _WIN32
-            const auto text=widen(tr("Export one worksheet with supported arithmetic, SUM, AVERAGE and IF formulas and basic row formatting. Lua and unsupported formulas become values. Decimal styles use 0 or 2 places. Lua scripts are omitted. Keep a .julretsu copy for full fidelity. Continue?")), caption=widen(tr("Export Excel workbook"));
-            if(MessageBoxW(static_cast<HWND>(native_window),text.c_str(),caption.c_str(),MB_OKCANCEL|MB_ICONINFORMATION)!=IDOK)return;
-#endif
-            if(editor_dirty_){queue_edit();auto r=sheet_.apply(queued_);queued_={};if(!r.accepted)throw std::runtime_error(r.error->context);modified_=true;selection_changed_=true;}
-            message_=write_xlsx(*chosen,sheet_);
-        } else {
-            auto imported=read_xlsx(*chosen,xlsx_formulas_);
-#ifdef _WIN32
-            const auto summary=widen(imported.summary), caption=widen(tr("Excel import preview"));
-            if(MessageBoxW(static_cast<HWND>(native_window),summary.c_str(),caption.c_str(),MB_OKCANCEL|MB_ICONINFORMATION)!=IDOK)return;
-#endif
-            if(!confirm_close())return;Sheet replacement({},&lua_);replacement.label_next_change("Import Excel");auto result=replacement.apply(imported.data);if(!result.accepted)throw std::runtime_error(result.error->context);
-            replacement.clear_history();sheet_=std::move(replacement);sheets_.clear();sheets_.push_back({"Sheet 1",Sheet({},&lua_),""});current_sheet_=0;viewport_.filtered=false;viewport_.filtered_rows.clear();file_path_.clear();workbook_name_="Imported Excel workbook";file_label_.clear();script_[0]=0;
-            modified_=true;editor_dirty_=false;counted_revision_=~std::uint64_t{};row_selection_.clear();select({0,0});viewport_.first_row=viewport_.first_column=0;
-            message_="Excel worksheet imported. Save .julretsu to keep changes. Import compatibility details were shown before loading.";
-        }
+            if(editor_dirty_)queue_edit();if(!queued_.cells.empty()){auto r=sheet_.apply(queued_);queued_={};if(!r.accepted)throw std::runtime_error(r.error->context);modified_=true;selection_changed_=true;}
+            recalculate_links();std::vector<XlsxSheet> document;
+            for(std::size_t i=0;i<sheets_.size();++i)document.push_back({sheets_[i].name,i==current_sheet_?&sheet_:&sheets_[i].sheet});
+            message_=write_xlsx_workbook(*chosen,document);
+        } else xlsx_preview_=read_xlsx_workbook(*chosen,xlsx_formulas_);
     }catch(const std::exception& e){message_=e.what();file_error_=message_;}
+}
+void GridUI::draw_xlsx_preview() {
+    if(xlsx_preview_)ImGui::OpenPopup(tr("Excel import preview"));
+    ImGui::SetNextWindowSize({660*scale_,420*scale_},ImGuiCond_Appearing);
+    if(ImGui::BeginPopupModal(tr("Excel import preview"),nullptr,ImGuiWindowFlags_None)){
+        ImGui::BeginChild("summary",{0,-50*scale_});if(xlsx_preview_)ImGui::TextWrapped("%s",xlsx_preview_->summary.c_str());ImGui::EndChild();
+        if(ImGui::Button(tr("Import workbook"))&&xlsx_preview_){auto imported=std::move(*xlsx_preview_);xlsx_preview_.reset();ImGui::CloseCurrentPopup();pending_=[this,imported=std::move(imported)]{
+            if(!confirm_close())return;std::vector<StoredSheet> loaded;
+            for(const auto& item:imported.sheets){Sheet next({},&lua_);auto r=next.apply(item.data);if(!r.accepted)throw std::runtime_error(r.error->context);next.clear_history();loaded.push_back({item.name,std::move(next),""});}
+            if(!sheet_.validation_rules().empty())loaded[0].sheet=checked_import(std::move(loaded[0].sheet));
+            sheets_=std::move(loaded);current_sheet_=0;sheet_=std::move(sheets_[0].sheet);script_[0]=0;queued_={};
+            viewport_.filtered=false;viewport_.filtered_rows.clear();file_path_.clear();file_label_.clear();workbook_name_=tr("Imported Excel workbook");
+            modified_=true;editor_dirty_=false;counted_revision_=~std::uint64_t{};row_selection_.clear();select({0,0});viewport_.first_row=viewport_.first_column=0;recalculate_links();
+            message_=tr("Excel workbook imported. Save a native copy to keep all supported features.");
+        };}
+        ImGui::SameLine();if(ImGui::Button(tr("Cancel"))){xlsx_preview_.reset();ImGui::CloseCurrentPopup();}ImGui::EndPopup();
+    }
 }
 
 void GridUI::ai_use_settings(const AiSettings& settings) {
@@ -640,15 +649,15 @@ void GridUI::recalculate_links() {
     Batch batch;for(const auto& [r,row]:sheet_.populated_rows())for(const auto& [c,cell]:row)if(auto f=std::get_if<FormulaInput>(&cell.input);f&&cell.formula&&std::any_of(cell.formula->nodes.begin(),cell.formula->nodes.end(),[](const AstNode& n){return n.kind==NodeKind::Call&&n.op=="SHEET";}))batch.cells.push_back({{r,c},cell.input});
     if(!batch.cells.empty()){auto result=sheet_.refresh_values(batch);if(!result.accepted)throw std::runtime_error(result.error->context);}
 }
-bool GridUI::save_document_to(const std::filesystem::path& path) {
+std::vector<DocumentSheet> GridUI::current_document() {
     Sheet snapshot=sheet_;Batch pending=queued_;
     if(editor_dirty_)pending.cells.push_back({active_,interpret(editor_.data())});
     if(!pending.cells.empty()){auto result=snapshot.apply(pending);if(!result.accepted)throw std::runtime_error(result.error->context);}
     std::vector<DocumentSheet> document;
-    if(sheets_.size()<=1&&sheets_[0].name=="Sheet 1") {write_workbook(path,snapshot,script_.data());return true;}
     for(std::size_t i=0;i<sheets_.size();++i)document.push_back({sheets_[i].name,serialize_sheet(i==current_sheet_?snapshot:sheets_[i].sheet,i==current_sheet_?script_.data():sheets_[i].script)});
-    write_document(path,document);return true;
+    return document;
 }
+bool GridUI::save_document_to(const std::filesystem::path& path) {auto doc=current_document();if(doc.size()==1&&doc[0].name=="Sheet 1")write_file_atomic(path,doc[0].bytes);else write_document(path,doc);return true;}
 void GridUI::change_sheet(std::size_t index) {
     if(index>=sheets_.size()||index==current_sheet_)return;
     if(editor_dirty_)queue_edit();if(!queued_.cells.empty()){auto r=sheet_.apply(queued_);queued_={};if(!r.accepted)throw std::runtime_error(r.error->context);modified_=true;}
@@ -1086,6 +1095,9 @@ void GridUI::draw_tools() {
     draw_report();
     draw_sheets();
     draw_format_dialog();
+    draw_validation();
+    draw_xlsx_preview();
+    draw_business_tools();
     draw_safety_dialogs();
     if(filter_open_)ImGui::OpenPopup(tr("Filter rows"));
     if(ImGui::BeginPopupModal(tr("Filter rows"),&filter_open_,ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -1107,11 +1119,14 @@ void GridUI::draw_tools() {
         if(ImGui::MenuItem(tr("Cell history..."))) { history_cell_=active_; history_open_=true; }
         if(ImGui::MenuItem(tr("Change log..."))) changelog_open_=true;
         if(ImGui::MenuItem(tr("Check sheet..."))) show_health(true);
+        if(ImGui::MenuItem(tr("Restore points...")))show_restore_points();
         if(ImGui::MenuItem(tr("Clear contents"),"Delete")) action_=Action::Clear;
     };
     if(ImGui::BeginMenuBar()) {
         if(ImGui::BeginMenu(tr("Edit"))) { commands(); ImGui::EndMenu(); }
         if(ImGui::BeginMenu(tr("Data"))) {
+            if(ImGui::MenuItem(tr("Structured tables...")))tables_open_=true;
+            if(ImGui::MenuItem(tr("Validation and protection...")))open_validation();
             if(ImGui::MenuItem(tr("Filter active column..."))){filter_column_=active_.column;filter_open_=true;}
             if(ImGui::MenuItem(tr("Clear filter"),nullptr,false,viewport_.filtered)){viewport_.filtered=false;viewport_.filtered_rows.clear();viewport_.first_row=0;}
             ImGui::Separator();
@@ -1283,7 +1298,7 @@ void GridUI::prepare() {
         case Action::Macro: {
             auto result=lua_.run_macro(script_.data(),sheet_);
             message_=result.error?result.error->context:trf("Macro complete. %zu writes applied in one transaction.",std::size_t(result.writes));
-            modified_|=!result.error&&result.writes>0; break;
+            lua_result_=message_;lua_error_=bool(result.error);modified_|=!result.error&&result.writes>0; break;
         }
         case Action::ImportXlsx:xlsx_file(false);break;
         case Action::ExportXlsx:xlsx_file(true);break;
@@ -1558,17 +1573,39 @@ bool GridUI::smoke_safety_net(const std::filesystem::path& path) {
     return true;
 }
 void GridUI::draw_script_panel(float height) {
-    ImGui::BeginChild("Scripts",{350*scale_,height},ImGuiChildFlags_Borders);
-    ImGui::TextUnformatted(tr("LUA WORKSPACE"));
-    ImGui::Spacing(); ImGui::TextUnformatted(tr("Make repetitive edits simple."));
-    ImGui::TextWrapped("%s",tr("Macros use cell('A1') to read and set('A1', value) to queue changes. All edits apply together."));
-    ImGui::Separator(); ImGui::Spacing();
-    if(ImGui::InputTextMultiline("##macro",script_.data(),script_.size(),{-1,std::max(100.0f,ImGui::GetContentRegionAvail().y-125*scale_)},ImGuiInputTextFlags_AllowTabInput)) modified_=true;
-    if(ImGui::Button(tr("Run macro"),{150*scale_,32*scale_})) action_=Action::Macro; remember_target(MacroButton);
-    ImGui::SameLine(); if(ImGui::Button(tr("Undo macro"))) action_=Action::Undo;
-    ImGui::Spacing(); ImGui::TextDisabled("%s",tr("Local execution / bounded resources"));
-    ImGui::TextWrapped("%s",tr("No files, network, or system access. Failed scripts leave the sheet unchanged."));
-    ImGui::EndChild();
+    ImGui::BeginChild("Scripts",{script_panel_width_,height},ImGuiChildFlags_Borders);
+    const auto accent=dark_?ImVec4{0.40f,0.85f,0.69f,1}:ImVec4{0.03f,0.43f,0.32f,1};
+    ImGui::TextColored(accent,"%s",tr("Lua editor"));ImGui::SameLine();
+    if(ImGui::SmallButton(tr("Close")))scripts_open_=false;
+    ImGui::Spacing();
+    if(ImGui::Button(tr("Run macro"),{140*scale_,32*scale_}))action_=Action::Macro;remember_target(MacroButton);
+    ImGui::SameLine();if(ImGui::Button(tr("Undo macro"),{0,32*scale_}))action_=Action::Undo;
+    ImGui::Separator();
+    if(ImGui::BeginTabBar("lua-tabs")){
+        if(ImGui::BeginTabItem(tr("Code"))){
+            auto* mono=ImGui::GetIO().Fonts->Fonts[std::min(2,ImGui::GetIO().Fonts->Fonts.Size-1)];ImGui::PushFont(mono);
+            ImGui::PushStyleColor(ImGuiCol_FrameBg,dark_?ImVec4{0.055f,0.075f,0.095f,1}:ImVec4{0.965f,0.975f,0.98f,1});
+            auto callback=[](ImGuiInputTextCallbackData* data){auto* cursor=static_cast<std::array<int,2>*>(data->UserData);(*cursor)={1,1};for(int i=0;i<data->CursorPos;++i){auto c=static_cast<unsigned char>(data->Buf[i]);if(c==10){++(*cursor)[0];(*cursor)[1]=1;}else if((c&192)!=128)++(*cursor)[1];}return 0;};
+            if(ImGui::InputTextMultiline("##macro",script_.data(),script_.size(),{-1,std::max(100.0f,ImGui::GetContentRegionAvail().y-150*scale_)},ImGuiInputTextFlags_AllowTabInput|ImGuiInputTextFlags_CallbackAlways,callback,&lua_cursor_))modified_=true;
+            if(ImGui::IsItemActive()&&ImGui::GetIO().KeyCtrl&&ImGui::IsKeyPressed(ImGuiKey_Enter))action_=Action::Macro;
+            ImGui::PopStyleColor();ImGui::PopFont();
+            ImGui::TextDisabled("%s",trf("Line %d, column %d | Ctrl+Enter to run",lua_cursor_[0],lua_cursor_[1]).c_str());
+            ImGui::EndTabItem();
+        }
+        if(ImGui::BeginTabItem(tr("Quick reference"))){
+            ImGui::TextWrapped("%s",tr("Read with cell('A1'). Write with set('A1', value). Changes apply together and can be undone."));
+            ImGui::Spacing();ImGui::TextUnformatted("local value = cell('A1')");ImGui::TextUnformatted("set('B1', value * 1.1)");
+            ImGui::Spacing();ImGui::TextWrapped("%s",tr("No files, network, or system access. Failed scripts leave the sheet unchanged."));
+            ImGui::TextWrapped("%s",tr("Validation and protected cells also apply to Lua edits."));
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
+    }
+    ImGui::SeparatorText(tr("Output"));
+    ImGui::BeginChild("lua-output",{0,0},ImGuiChildFlags_Borders);
+    if(lua_result_.empty())ImGui::TextDisabled("%s",tr("Run a macro to see its result here."));
+    else {ImGui::PushStyleColor(ImGuiCol_Text,lua_error_?ImVec4{0.92f,0.37f,0.30f,1}:accent);ImGui::TextWrapped("%s",tr_text(lua_result_).c_str());ImGui::PopStyleColor();}
+    ImGui::EndChild();ImGui::EndChild();
 }
 void GridUI::draw_ai_panel(float height) {
     ImGui::BeginChild("AI assistant",{400*scale_,height},ImGuiChildFlags_Borders);
@@ -2337,6 +2374,10 @@ void GridUI::draw() {
         ImGui::SameLine(); if(ImGui::Button(tr("Ask AI for formulas"))) show_ai(true);
         ImGui::Spacing(); ImGui::TextDisabled("%s",tr("SUM  /  AVERAGE  /  IF  /  Lua-powered formulas"));
     } else if(ribbon_tab_==3) {
+        if(ImGui::Button(tr("Restore points...")))show_restore_points();
+        ImGui::SameLine();
+        if(ImGui::Button(tr("Validation and protection...")))open_validation();
+        ImGui::SameLine();
         if(ribbon_button(tr("Check sheet"),Glyph::Find,scale_,100)) show_health(!health_open_);
         ImGui::SameLine(); if(ribbon_button(tr("Cell history"),Glyph::Undo,scale_,100)) { history_cell_=active_; history_open_=true; }
         ImGui::SameLine(); if(ribbon_button(tr("Change log"),Glyph::Book,scale_,100)) changelog_open_=true;
@@ -2435,7 +2476,8 @@ void GridUI::draw() {
     if(ImGui::IsItemActive()) { grid_focused_=false; if(ImGui::IsKeyPressed(ImGuiKey_Escape)) { selection_changed_=true; grid_focused_=true; } }
     ImGui::SameLine(); if(ImGui::Button(tr("Apply"),{68*scale_,0})) queue_edit();
     const float height=std::max(100.0f,ImGui::GetContentRegionAvail().y-48*scale_);
-    const float width=ImGui::GetContentRegionAvail().x-(scripts_open_?362*scale_:(ai_open_||health_open_)?412*scale_:0);
+    script_panel_width_=std::clamp(ImGui::GetContentRegionAvail().x*0.44f,320*scale_,560*scale_);
+    const float width=ImGui::GetContentRegionAvail().x-(scripts_open_?script_panel_width_+12*scale_:(ai_open_||health_open_)?412*scale_:0);
     draw_grid(width,height);
     if(scripts_open_) { ImGui::SameLine(); draw_script_panel(height); }
     else if(ai_open_) { ImGui::SameLine(); draw_ai_panel(height); }

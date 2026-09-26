@@ -59,7 +59,7 @@ void write_file_atomic(const std::filesystem::path& path,std::string_view bytes)
 std::string serialize_sheet(const Sheet& sheet,std::string_view script) {
     if(script.size()>16384) throw std::runtime_error("The Lua script exceeds the supported limit.");
     std::ostringstream out(std::ios::binary);
-    out.write("JULRETSU",8); number(out,4,4); number(out,sheet.populated_cells(),4);
+    out.write("JULRETSU",8); number(out,6,4); number(out,sheet.populated_cells(),4);
     for(const auto& [row,cells]:sheet.populated_rows()) for(const auto& [column,cell]:cells) {
         number(out,row,4); number(out,column,4); number(out,cell.input.index(),1);
         if(auto n=std::get_if<double>(&cell.input)) number(out,std::bit_cast<std::uint64_t>(*n),8);
@@ -96,6 +96,15 @@ std::string serialize_sheet(const Sheet& sheet,std::string_view script) {
             text(out,change.before); text(out,change.after);
         }
     }
+    number(out,sheet.validation_rules().size(),4);
+    for(const auto& r:sheet.validation_rules()) {
+        number(out,r.first.row,4);number(out,r.first.column,4);number(out,r.last.row,4);number(out,r.last.column,4);
+        number(out,unsigned(r.kind),1);number(out,r.required|r.unique<<1|r.locked<<2|r.warning<<3,1);
+        number(out,std::bit_cast<std::uint64_t>(r.minimum),8);number(out,std::bit_cast<std::uint64_t>(r.maximum),8);
+        text(out,r.date_min);text(out,r.date_max);number(out,r.choices.size(),4);for(const auto& s:r.choices)text(out,s);
+    }
+    number(out,sheet.tables().size(),4);
+    for(const auto& t:sheet.tables()){text(out,t.name);number(out,t.first.row,4);number(out,t.first.column,4);number(out,t.last.row,4);number(out,t.last.column,4);number(out,t.totals,1);}
     const auto bytes=out.str();
     if(bytes.size()>maximum_file) throw std::runtime_error("Workbook exceeds the supported file size.");
     return bytes;
@@ -107,7 +116,7 @@ WorkbookData deserialize_sheet(std::string_view bytes) {
 
     in.seekg(0); char magic[8]{}; in.read(magic,8);
     const auto version=number(in,4);
-    if(std::string_view(magic,8)!="JULRETSU"||(version<1||version>4)) throw std::runtime_error("This is not a supported Julretsu workbook. Choose a .julretsu file.");
+    if(std::string_view(magic,8)!="JULRETSU"||(version<1||version>6)) throw std::runtime_error("This is not a supported Julretsu workbook. Choose a .julretsu file.");
     WorkbookData result; Limits limits; std::size_t budget=limits.sheet_input_bytes;
     const auto count=number(in,4); if(count>limits.populated_cells) throw std::runtime_error("Workbook has too many cells.");
     std::set<CellCoord> seen;
@@ -163,6 +172,26 @@ WorkbookData deserialize_sheet(std::string_view bytes) {
             }
             result.journal.push_back(std::move(record));
         }
+    }
+    if(version>=5) {
+        auto count=number(in,4);if(count>1000)throw std::runtime_error("Invalid validation rules.");
+        result.data.rules.emplace();std::size_t rules_budget=4*1024*1024, area=0;
+        for(std::uint64_t i=0;i<count;++i) {
+            ValidationRule r;r.first={unsigned(number(in,4)),unsigned(number(in,4))};r.last={unsigned(number(in,4)),unsigned(number(in,4))};
+            r.kind=ValidationKind(number(in,1));auto flags=number(in,1);if(flags>15)throw std::runtime_error("Invalid validation rules.");
+            r.required=flags&1;r.unique=flags&2;r.locked=flags&4;r.warning=flags&8;
+            r.minimum=std::bit_cast<double>(number(in,8));r.maximum=std::bit_cast<double>(number(in,8));
+            r.date_min=text(in,10,rules_budget);r.date_max=text(in,10,rules_budget);
+            auto choices=number(in,4);if(choices>100)throw std::runtime_error("Invalid validation rules.");
+            for(std::uint64_t j=0;j<choices;++j)r.choices.push_back(text(in,256,rules_budget));
+            if(!valid_rule(r))throw std::runtime_error("Invalid validation rules.");
+            area+=std::size_t(r.last.row-r.first.row+1)*(r.last.column-r.first.column+1);
+            if(area>100000)throw std::runtime_error("Invalid validation rules.");
+            result.data.rules->push_back(std::move(r));
+        }
+    }
+    if(version>=6){auto count=number(in,4);if(count>64)throw std::runtime_error("Invalid table count.");result.data.tables.emplace();std::size_t table_budget=4096;
+        for(unsigned i=0;i<count;++i){StructuredTable t;t.name=text(in,64,table_budget);t.first={unsigned(number(in,4)),unsigned(number(in,4))};t.last={unsigned(number(in,4)),unsigned(number(in,4))};auto total=number(in,1);if(total>1)throw std::runtime_error("Invalid table data.");t.totals=total!=0;result.data.tables->push_back(t);}
     }
     if(result.script.find('\0')!=std::string::npos||in.peek()!=EOF) throw std::runtime_error("Unexpected data in workbook.");
     return result;

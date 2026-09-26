@@ -1,4 +1,6 @@
 #include "julretsu/GridCore.hpp"
+#include "julretsu/I18n.hpp"
+#include "julretsu/WorksheetOps.hpp"
 #include <algorithm>
 #include <atomic>
 #include <array>
@@ -150,14 +152,17 @@ std::size_t Sheet::recalculate(State& s,const std::set<CellCoord>& dirty,std::ui
     }
     return evaluated;
 }
-CommitResult Sheet::apply(const Batch& batch) {
+CommitResult Sheet::apply(const Batch& requested) {
+    Batch expanded;
+    try {expanded=expand_tables(*this,requested);} catch(const std::exception& e){CommitResult failed;failed.revision=revision_;failed.error=CellError{ErrorCode::Value,e.what(),{}};return failed;}
+    const Batch& batch=expanded;
     CommitResult result; result.revision=revision_;
     auto reject=[&](ErrorCode code,std::string context) {
         result.error=CellError{code,std::move(context),{}}; return result;
     };
     if(batch.cells.size()>limits_.batch_edits||batch.rows.size()>limits_.batch_edits||batch.formats.size()>limits_.batch_edits)
         return reject(ErrorCode::Limit,"Batch edit limit");
-    if(batch.cells.empty()&&batch.rows.empty()&&batch.formats.empty()) { result.accepted=true; return result; }
+    if(batch.cells.empty()&&batch.rows.empty()&&batch.formats.empty()&&!batch.rules&&!batch.tables) { result.accepted=true; return result; }
     if(revision_==std::numeric_limits<std::uint64_t>::max()) return reject(ErrorCode::Limit,"Revision exhausted");
     try {
         std::size_t batch_bytes=0;
@@ -190,8 +195,38 @@ CommitResult Sheet::apply(const Batch& batch) {
         for(const auto& edit:batch.formats)
             if(!edit.coord.valid()||(edit.style&&(edit.style->decimals>12||edit.style->alignment>3||edit.style->number_format>5||edit.style->font_size<8||edit.style->font_size>36||edit.style->font_family>2)))
                 return reject(ErrorCode::Value,"Invalid cell formatting");
+        // Reject the whole edit before changing any protected input or formatting.
+        for(const auto& rule:state_.rules) if(rule.locked) {
+            for(const auto& e:batch.cells) if(rule.contains(e.coord)) {
+                const auto* old=cell(e.coord);
+                if((old?old->input:Input{})!=e.input) return reject(ErrorCode::Value,trf("%s: This cell is protected.",std::get<std::string>(to_a1(e.coord)).c_str()));
+            }
+            for(const auto& e:batch.formats) if(rule.contains(e.coord)) return reject(ErrorCode::Value,tr("Protected cell formatting cannot be changed."));
+            for(const auto& e:batch.rows) if(e.row>=rule.first.row&&e.row<=rule.last.row) return reject(ErrorCode::Value,tr("Protected cell formatting cannot be changed."));
+        }
+        if(batch.rules) {
+            std::size_t area=0,rule_bytes=0;
+            if(batch.rules->size()>1000) return reject(ErrorCode::Limit,tr("Use at most 1,000 rules and 100,000 rule cells."));
+            for(const auto& rule:*batch.rules) {
+                if(!valid_rule(rule)) return reject(ErrorCode::Value,tr("Invalid validation rule. Check the range, limits and choices."));
+                rule_bytes+=rule.date_min.size()+rule.date_max.size();for(const auto& choice:rule.choices)rule_bytes+=choice.size();
+                if(rule_bytes>4*1024*1024) return reject(ErrorCode::Limit,tr("Invalid validation rule. Check the range, limits and choices."));
+                area+=std::size_t(rule.last.row-rule.first.row+1)*(rule.last.column-rule.first.column+1);
+                if(area>100000) return reject(ErrorCode::Limit,tr("Use at most 1,000 rules and 100,000 rule cells."));
+            }
+        }
+        if(batch.tables){
+            if(batch.tables->size()>64)return reject(ErrorCode::Limit,tr("Invalid table range or name."));
+            std::set<std::string> names;
+            for(const auto& t:*batch.tables){
+                if(t.name.empty()||t.name.size()>64||!names.insert(t.name).second||!t.first.valid()||!t.last.valid()||t.first.row>=t.last.row||t.first.column>t.last.column||t.last.row+unsigned(t.totals)>=max_rows||std::uint64_t(t.last.row-t.first.row+1)*(t.last.column-t.first.column+1)>100000)return reject(ErrorCode::Value,tr("Invalid table range or name."));
+                for(const auto& other:*batch.tables)if(&t!=&other&&t.first.row<=other.last.row+unsigned(other.totals)&&t.last.row+unsigned(t.totals)>=other.first.row&&t.first.column<=other.last.column&&t.last.column>=other.first.column)return reject(ErrorCode::Value,tr("Tables cannot overlap."));
+            }
+        }
         State staged=state_; // Strong transaction boundary; see complexity contract.
         std::set<CellCoord> dirty;
+        if(batch.rules) staged.rules=*batch.rules;
+        if(batch.tables) staged.tables=*batch.tables;
         for(auto& [coord,cell]:candidates) {
             auto old=staged.precedents.find(coord);
             if(old!=staged.precedents.end()) {
@@ -264,6 +299,16 @@ CommitResult Sheet::apply(const Batch& batch) {
             if(!topology_changed) { settled=true; break; }
         }
         if(!settled) return reject(ErrorCode::Limit,"Dynamic dependency discovery exceeded 64 passes; batch rolled back");
+        // Check final recalculated values, including duplicates introduced in one paste.
+        // Existing invalid cells are reported by the rule panel; unrelated edits remain possible.
+        if(!batch.cells.empty()&&!state_.rules.empty()) {
+            auto issues=check_rules(staged.rules,[&](CellCoord c){return read_state(staged,c);});
+            for(const auto& issue:issues) if(!issue.warning&&dirty.contains(issue.cell)) {
+                bool scaffold=false;if(batch.table_scaffold&&issue.reason=="A value is required."&&std::holds_alternative<std::monostate>(read_state(staged,issue.cell)))for(const auto& t:staged.tables)for(const auto& old:state_.tables)if(t.name==old.name&&t.last.row==old.last.row+1&&issue.cell.row==t.last.row)scaffold=true;
+                if(scaffold)continue;
+                return reject(ErrorCode::Value,trf("%s: %s",std::get<std::string>(to_a1(issue.cell)).c_str(),tr(issue.reason.c_str())));
+            }
+        }
         result.changed.assign(dirty.begin(),dirty.end());
         std::set<std::uint32_t> styled;
         for(const auto& edit:batch.rows) styled.insert(edit.row);
@@ -346,6 +391,7 @@ void Sheet::record_change(const State& before,std::string label) {
         });
         merge_maps(before.formats,state_.formats,[&](const CellCoord&,const Style* x,const Style* y) { if(!x||!y||!(*x==*y)) ++record.formats; });
         merge_maps(before.styles,state_.styles,[&](std::uint32_t,const Style* x,const Style* y) { if(!x||!y||!(*x==*y)) ++record.formats; });
+        if(before.rules!=state_.rules||before.tables!=state_.tables) ++record.formats;
         if(!record.total_cells&&!record.formats) return; // recalculation only; nothing a person changed
         const bool explicit_label=!label.empty();
         record.label=explicit_label?std::move(label):next_label_.empty()?std::string("Edit"):next_label_;

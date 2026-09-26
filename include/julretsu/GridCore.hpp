@@ -1,6 +1,7 @@
 #pragma once
 #include "Formula.hpp"
 #include <map>
+#include <functional>
 #include <set>
 #include <span>
 #include <vector>
@@ -38,7 +39,27 @@ public:
 struct Edit { CellCoord coord; Input input; };
 struct StyleEdit { std::uint32_t row; std::optional<Style> style; };
 struct CellStyleEdit { CellCoord coord; std::optional<Style> style; };
-struct Batch { std::vector<Edit> cells; std::vector<StyleEdit> rows; std::vector<CellStyleEdit> formats{}; };
+enum class ValidationKind { Any, Number, WholeNumber, Date, List };
+struct ValidationRule {
+    CellCoord first{}, last{};
+    ValidationKind kind=ValidationKind::Any;
+    bool required=false, unique=false, locked=false, warning=false;
+    double minimum=0, maximum=100;
+    std::string date_min="1900-01-01", date_max="2100-12-31";
+    std::vector<std::string> choices;
+    bool contains(CellCoord c) const { return c.row>=first.row&&c.row<=last.row&&c.column>=first.column&&c.column<=last.column; }
+    bool operator==(const ValidationRule&) const = default;
+};
+struct ValidationIssue { CellCoord cell; std::string reason; bool warning=false; };
+bool valid_rule(const ValidationRule&);
+std::vector<ValidationIssue> check_rules(const std::vector<ValidationRule>&, const std::function<Value(CellCoord)>&);
+struct StructuredTable {
+    std::string name;
+    CellCoord first{},last{}; // header through last data row; optional totals follow
+    bool totals=false;
+    bool operator==(const StructuredTable&) const = default;
+};
+struct Batch { std::vector<Edit> cells; std::vector<StyleEdit> rows; std::vector<CellStyleEdit> formats{}; std::optional<std::vector<ValidationRule>> rules{}; std::optional<std::vector<StructuredTable>> tables{}; bool table_scaffold=false; };
 // Per-cell change history. Every committed edit, undo and redo is recorded with its
 // time and a short label; inputs are kept as display text so history survives saving.
 struct CellChange { CellCoord coord; std::string before, after; std::uint8_t before_kind{}, after_kind{}; };
@@ -59,6 +80,8 @@ class Sheet {
         std::map<std::uint32_t,Style> styles;
         std::map<CellCoord,Style> formats;
         Edges precedents, dependents;
+        std::vector<ValidationRule> rules;
+        std::vector<StructuredTable> tables;
     };
     State state_;
     std::vector<State> undo_, redo_;
@@ -79,6 +102,9 @@ class Sheet {
 public:
     explicit Sheet(Limits limits = {}, const FormulaExtension* extension = nullptr);
     [[nodiscard]] Value read(CellCoord coord) const;
+    const std::vector<StructuredTable>& tables() const { return state_.tables; }
+    const std::vector<ValidationRule>& validation_rules() const { return state_.rules; }
+    std::vector<ValidationIssue> validation_issues() const { return check_rules(state_.rules,[this](CellCoord c){return read(c);}); }
     [[nodiscard]] const Cell* cell(CellCoord coord) const;
     [[nodiscard]] const Row& row_view(std::uint32_t row) const;
     [[nodiscard]] const std::map<std::uint32_t,Row>& populated_rows() const noexcept { return state_.rows; }
