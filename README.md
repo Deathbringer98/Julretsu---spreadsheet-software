@@ -51,7 +51,7 @@ This is an editable native MVP, not a complete Excel replacement.
 - **macOS and Linux:** the `Installers` GitHub Actions workflow builds `Julretsu-1.2.1-macOS.dmg`
   (universal, macOS 13.3+), `Julretsu-1.2.1-linux-amd64.deb` and `Julretsu-1.2.1-linux-x86_64.tar.gz`.
   Pushing a `v*` tag attaches them to a draft GitHub release.
-  **Opening the Mac app:** open the `.dmg` and drag Julretsu to Applications. The app is signed ad hoc but not
+  **Opening the Mac app:** open the `.dmg`, drag Julretsu to Applications (do not run it from the disk image) and eject the image. The app is signed ad hoc but not
   notarized by Apple, so macOS may say it is "damaged". It is not. Run `xattr -cr /Applications/Julretsu.app`
   in Terminal once, then open it (if Terminal says Operation not permitted, allow Terminal under System Settings >
   Privacy & Security > App Management). An "unidentified developer" message is cleared with Open Anyway in
