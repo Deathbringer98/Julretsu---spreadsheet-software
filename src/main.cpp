@@ -117,9 +117,20 @@ bool add_face(const std::vector<FontFace>& candidates,float size,const ImWchar* 
     }
     return false;
 }
+// The size to lay the interface out at. Windows and Linux windows are measured in pixels, so a 150% display
+// needs everything 1.5x bigger. macOS windows are measured in points and the system already doubles Retina
+// pixels, so layout stays 1x there; only the font is rasterized sharper (see font()).
+float layout_scale(float content_scale) {
+#ifdef __APPLE__
+    (void)content_scale; return 1.0f;
+#else
+    return content_scale;
+#endif
+}
 void font(float scale) {
     auto& io=ImGui::GetIO(); io.Fonts->Clear();
     const float size=20*scale;
+    io.FontGlobalScale=layout_scale(scale)/scale; // 1 on Windows/Linux; 1/scale on Retina so sharp glyphs draw at normal size
     // Latin text comes from the sans, serif and monospace fonts; Korean and Japanese characters that are
     // actually shown are merged in from the system's CJK fonts. System fonts are used, never redistributed.
     static std::vector<ImWchar> ranges, extra;
@@ -188,6 +199,11 @@ std::size_t memory_bytes() {
 #endif
 }
 }
+#ifdef __APPLE__
+constexpr int WINDOW_W=1280, WINDOW_H=800; // points; fits a 13-inch MacBook with room for the menu bar and Dock
+#else
+constexpr int WINDOW_W=1580, WINDOW_H=960;
+#endif
 int main(int argc,char** argv) {
     bool smoke=false, benchmark=false, show=false, no_splash=false, system_titlebar=false;
     std::string manual_dir; // --manual-shots: clean screenshots of each feature for the user manual
@@ -239,7 +255,7 @@ int main(int argc,char** argv) {
         // Show the first rendered frame instead of a blank startup window.
         glfwWindowHint(GLFW_VISIBLE,GLFW_FALSE);
         using Window=std::unique_ptr<GLFWwindow,decltype(&glfwDestroyWindow)>;
-        Window window(glfwCreateWindow(1580,960,"Julretsu - Spreadsheet",nullptr,nullptr),glfwDestroyWindow);
+        Window window(glfwCreateWindow(WINDOW_W,WINDOW_H,"Julretsu - Spreadsheet",nullptr,nullptr),glfwDestroyWindow);
         if(!window) throw std::runtime_error("OpenGL window creation failed.");
         glfwSetWindowSizeLimits(window.get(),1100,640,GLFW_DONT_CARE,GLFW_DONT_CARE);
         julretsu::WindowFrame window_frame;
@@ -259,7 +275,7 @@ int main(int argc,char** argv) {
         julretsu::set_language(!language_code.empty()?julretsu::language_from_code(language_code):
             (smoke||benchmark||!manual_dir.empty())?julretsu::Language::English:julretsu::GridUI::saved_language());
         for(auto text:julretsu::translations(julretsu::language())) julretsu::glyphs::note(text);
-        theme(scale); font(scale);
+        theme(layout_scale(scale)); font(scale);
         if(!ImGui_ImplGlfw_InitForOpenGL(window.get(),true)) throw std::runtime_error("ImGui GLFW initialization failed.");
         gui.glfw=true;
         if(!ImGui_ImplOpenGL3_Init(glsl)) throw std::runtime_error("ImGui OpenGL initialization failed.");
@@ -279,7 +295,7 @@ int main(int argc,char** argv) {
         if(!no_splash) loading_frame(julretsu::tr("Starting Julretsu..."));
         if((!smoke&&!benchmark&&!check_open)||show) glfwShowWindow(window.get());
         if(!no_splash) loading_frame(julretsu::tr("Preparing your worksheet..."),smoke);
-        julretsu::GridUI app; app.set_scale(scale); app.brand_icon=branding.icon_texture();
+        julretsu::GridUI app; app.set_scale(layout_scale(scale)); app.brand_icon=branding.icon_texture();
 #ifdef _WIN32
         app.native_window=glfwGetWin32Window(window.get());
 #endif
@@ -287,7 +303,7 @@ int main(int argc,char** argv) {
         if(smoke||benchmark||!manual_dir.empty()) app.disable_recovery();
         if(!manual_dir.empty()) app.set_dark(false,false);
         if(smoke||benchmark) app.set_dark(false,false);
-        bool current_dark=app.dark(); theme(scale,current_dark);
+        bool current_dark=app.dark(); theme(layout_scale(scale),current_dark);
         if(smoke&&std::getenv("JULRETSU_SETTINGS_PATH")) {
             app.set_dark(true,true);
             julretsu::GridUI restored;
@@ -360,9 +376,9 @@ int main(int argc,char** argv) {
             glfwGetWindowContentScale(window.get(),&sx,&sy);
             const float new_scale=std::clamp(std::max(sx,sy),1.0f,2.5f);
             if(new_scale!=scale) {
-                scale=new_scale; theme(scale,app.dark()); font(scale);
+                scale=new_scale; theme(layout_scale(scale),app.dark()); font(scale);
                 ImGui_ImplOpenGL3_DestroyFontsTexture(); ImGui_ImplOpenGL3_CreateFontsTexture();
-                app.set_scale(scale);
+                app.set_scale(layout_scale(scale));
             }
             if(smoke) {
                 if(frame==10) app.show_scripts(true);
@@ -370,7 +386,7 @@ int main(int argc,char** argv) {
                 if(frame==40) { app.jump({3,2}); app.show_scripts(false); }
                 if(frame==50) app.jump({3,7});
             }
-            if(current_dark!=app.dark()) { current_dark=app.dark(); theme(scale,current_dark); }
+            if(current_dark!=app.dark()) { current_dark=app.dark(); theme(layout_scale(scale),current_dark); }
             app.prepare();
             if(julretsu::glyphs::take_changes()) { font(scale); ImGui_ImplOpenGL3_DestroyFontsTexture(); ImGui_ImplOpenGL3_CreateFontsTexture(); }
             ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame();
