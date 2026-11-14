@@ -10,7 +10,10 @@ Supported syntax:
 - Inclusive rectangles, including reversed endpoints normalized to a rectangle.
 - Parentheses, unary +/-, binary +, -, *, /.
 - Comparisons =, <>, !=, <, <=, >, >=.
-- Case-insensitive SUM, AVERAGE, IF; reserved LUA.
+- Case-insensitive SUM, AVERAGE, MIN, MAX, COUNT, ROUND, ABS, IF; reserved LUA.
+  MIN, MAX and COUNT read numbers like SUM does (MIN and MAX of no numbers give 0).
+  ROUND(x) or ROUND(x, digits) rounds half away from zero, digits from -15 to 15. ABS takes one argument.
+  A blank cell compares equal to "" and counts as FALSE in an IF condition.
 - Double a quote inside a quoted string: ="say ""hi""" yields say "hi".
   Backslashes are literal, not escapes. Text bytes are preserved; Unicode
   normalization, locale parsing, and UTF-8 validation are not implemented.

@@ -5,8 +5,7 @@
 
 Julretsu now includes a Windows-tested native ImGui application, a sparse C++20
 spreadsheet engine, and bounded Lua formulas/macros. Julretsu is free to use but owned by Matthew Menchinton; it is not open source. See [LICENSE](LICENSE).
-The architecture also targets Linux and macOS; those builds have not been run
-locally in this Windows session.
+It also builds for macOS (universal, Apple silicon and Intel) and Linux through GitHub Actions; see Installers below.
 
 - The app now uses your supplied icon and startup banner. See [branding notes](docs/BRANDING-0.2.1.md).
 
@@ -26,7 +25,7 @@ This is an editable native MVP, not a complete Excel replacement.
 
 ## Implemented
 - 1,000,000 logical rows × 16,384 columns (through XFD1000000), with sparse storage.
-- Native arithmetic, comparisons, SUM, AVERAGE, lazy IF, and structured errors.
+- Native arithmetic, comparisons, SUM, AVERAGE, MIN, MAX, COUNT, ROUND, ABS, lazy IF, and structured errors.
 - Incremental dependency propagation, iterative cycle detection, atomic edits,
   sparse row styles, compact selections, and undo/redo.
 - Lua formulas such as =LUA("return cell('A1') * 2"), including runtime dependency
@@ -52,6 +51,10 @@ This is an editable native MVP, not a complete Excel replacement.
 - **macOS and Linux:** the `Installers` GitHub Actions workflow builds `Julretsu-1.2.0-macOS.dmg`
   (universal, macOS 13.3+), `Julretsu-1.2.0-linux-amd64.deb` and `Julretsu-1.2.0-linux-x86_64.tar.gz`.
   Pushing a `v*` tag attaches them to a draft GitHub release.
+  **Opening the Mac app:** open the `.dmg` and drag Julretsu to Applications. The app is signed ad hoc but not
+  notarized by Apple, so the first launch needs Control-click > Open, or System Settings > Privacy & Security >
+  Open Anyway. If macOS says the app is damaged, run `xattr -cr /Applications/Julretsu.app` once.
+  Cmd works for copy, paste, undo and save. The macOS file dialogs use AppleScript.
 - **Manuals:** `docs/Julretsu-User-Manual.pdf` (English), `-ko.pdf` (Korean) and `-ja.pdf` (Japanese),
   generated from the HTML in `docs/manual/` (screenshots come from
   `julretsu --manual-shots <folder> --language ko`). Every installer includes all three.

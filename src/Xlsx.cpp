@@ -45,6 +45,10 @@ std::uint32_t color(pugi::xml_node node,std::uint32_t fallback){auto rgb=node.at
 std::string decimal(double n){std::array<char,64>b{};auto[end,e]=std::to_chars(b.data(),b.data()+b.size(),n);if(e!=std::errc{})throw std::runtime_error("Number conversion failed.");return {b.data(),end};}
 std::string serialized(pugi::xml_document& doc){std::ostringstream out;doc.save(out,"",pugi::format_raw,pugi::encoding_utf8);return out.str();}
 std::string rgb(std::uint32_t color){char b[16]{};std::snprintf(b,sizeof b,"FF%06X",color>>8);return b;}
+// Excel rejects error codes it does not know (#CYCLE!, #LIMIT!...), so those become #VALUE!.
+const char* excel_error(ErrorCode code){
+    switch(code){case ErrorCode::Ref:return "#REF!";case ErrorCode::Name:return "#NAME?";case ErrorCode::DivZero:return "#DIV/0!";case ErrorCode::Num:return "#NUM!";default:return "#VALUE!";}
+}
 std::string address(CellCoord c){return std::get<std::string>(to_a1(c));}
 std::string range(CellCoord a,CellCoord z){return address(a)+":"+address(z);}
 bool range_parse(std::string text,CellCoord& a,CellCoord& z){
@@ -105,7 +109,7 @@ std::string native_formula(std::string source){
 }
 bool supported_formula(const std::string& source){
     auto native=native_formula(source);auto parsed=parse_formula(native,{});if(parsed.error)return false;
-    for(const auto& n:parsed.nodes)if(n.kind==NodeKind::Call&&n.op!="SUM"&&n.op!="AVERAGE"&&n.op!="IF"&&n.op!="SHEET")return false;
+    for(const auto& n:parsed.nodes)if(n.kind==NodeKind::Call&&n.op!="SUM"&&n.op!="AVERAGE"&&n.op!="MIN"&&n.op!="MAX"&&n.op!="COUNT"&&n.op!="ROUND"&&n.op!="ABS"&&n.op!="IF"&&n.op!="SHEET")return false;
     if(native.find("SHEET")!=std::string::npos)return excel_formula(native)!=native;
     return native.find_first_of("![]") == std::string::npos;
 }
@@ -229,7 +233,7 @@ std::string write_xlsx_workbook(const std::filesystem::path& path,const std::vec
                 if(dates.contains(coord))if(auto text=std::get_if<std::string>(&value);text&&!text->empty())value=double(date_serial(*text));
                 if(auto n=std::get_if<double>(&value))c.append_child("v").text().set(decimal(*n).c_str());
                 else if(auto b=std::get_if<bool>(&value)){c.append_attribute("t")="b";c.append_child("v").text().set(*b?"1":"0");}
-                else if(std::holds_alternative<CellError>(value)){c.append_attribute("t")="e";c.append_child("v").text().set("#VALUE!");}
+                else if(std::holds_alternative<CellError>(value)){c.append_attribute("t")="e";c.append_child("v").text().set(excel_error(std::get<CellError>(value).code));}
                 else {auto text=display(value);if(!valid_utf8(text))throw std::runtime_error("Invalid Excel text.");if(formula){c.append_attribute("t")="str";c.append_child("v").text().set(text.c_str());}else{c.append_attribute("t")="inlineStr";auto t=c.append_child("is").append_child("t");t.append_attribute("xml:space")="preserve";t.text().set(text.c_str());}}
             }
         }

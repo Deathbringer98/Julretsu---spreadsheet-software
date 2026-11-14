@@ -179,6 +179,9 @@ class Evaluator {
                 if(n.op=="+") return finite(x+y); if(n.op=="-") return finite(x-y); if(n.op=="*") return finite(x*y);
                 if(y==0) return error(ErrorCode::DivZero,"Division by zero"); return finite(x/y);
             }
+            // A blank cell compares as empty text against text, so =A1="" is TRUE for an empty A1.
+            if(std::holds_alternative<std::monostate>(a)&&std::holds_alternative<std::string>(b)) a=std::string();
+            else if(std::holds_alternative<std::monostate>(b)&&std::holds_alternative<std::string>(a)) b=std::string();
             int compare=0;
             if(auto x=std::get_if<std::string>(&a)) {
                 auto y=std::get_if<std::string>(&b); if(!y) return error(ErrorCode::Value,"Cannot compare text with a non-text value");
@@ -197,16 +200,36 @@ class Evaluator {
             if(n.children.size()!=3) return error(ErrorCode::Value,"IF requires three arguments");
             auto condition=eval(n.children[0]);
             if(std::holds_alternative<CellError>(condition)) return condition;
-            if(!std::holds_alternative<double>(condition)&&!std::holds_alternative<bool>(condition))
+            if(!std::holds_alternative<double>(condition)&&!std::holds_alternative<bool>(condition)&&!std::holds_alternative<std::monostate>(condition))
                 return error(ErrorCode::Value,"IF condition must be Boolean or numeric");
             return eval(n.children[std::get<double>(numeric(condition))!=0?1:2]);
         }
-        if(n.op=="SUM"||n.op=="AVERAGE") {
+        if(n.op=="ABS"||n.op=="ROUND") {
+            const bool round=n.op=="ROUND";
+            if(n.children.size()<1||n.children.size()>(round?2u:1u)) return error(ErrorCode::Value,n.op+" has the wrong number of arguments");
+            auto x=numeric(eval(n.children[0])); if(std::holds_alternative<CellError>(x)) return x;
+            double digits=0;
+            if(round&&n.children.size()==2) {
+                auto d=numeric(eval(n.children[1])); if(std::holds_alternative<CellError>(d)) return d;
+                digits=std::trunc(std::get<double>(d));
+            }
+            const double v=std::get<double>(x);
+            if(!round) return finite(std::fabs(v));
+            if(digits<-15||digits>15) return error(ErrorCode::Num,"ROUND digits must be between -15 and 15");
+            const double scale=std::pow(10.0,digits), scaled=v*scale;
+            // Nudge by one part in 10^15 so 1.005 rounds to 1.01 as in Excel, not 1.00.
+            return finite(std::round(scaled*(1+1e-15))/scale);
+        }
+        if(n.op=="SUM"||n.op=="AVERAGE"||n.op=="MIN"||n.op=="MAX"||n.op=="COUNT") {
             if(n.children.empty()) return error(ErrorCode::Value,"Aggregate requires at least one argument");
-            double sum=0; std::size_t count=0;
+            double sum=0,low=0,high=0; std::size_t count=0;
             auto consume=[&](const Value& v) {
                 if(auto e=std::get_if<CellError>(&v)) throw *e;
-                if(auto d=std::get_if<double>(&v)) { sum+=*d; ++count; if(!std::isfinite(sum)) throw error(ErrorCode::Num,"Aggregate overflow"); }
+                if(auto d=std::get_if<double>(&v)) {
+                    if(!count||*d<low) low=*d;
+                    if(!count||*d>high) high=*d;
+                    sum+=*d; ++count; if(!std::isfinite(sum)) throw error(ErrorCode::Num,"Aggregate overflow");
+                }
             };
             for(auto child:n.children) {
                 const auto& arg=formula_.nodes[child];
@@ -216,6 +239,9 @@ class Evaluator {
                 } else consume(eval(child));
             }
             if(n.op=="AVERAGE"&&!count) return error(ErrorCode::DivZero,"AVERAGE has no numeric values");
+            if(n.op=="COUNT") return static_cast<double>(count);
+            if(n.op=="MIN") return finite(count?low:0.0);
+            if(n.op=="MAX") return finite(count?high:0.0);
             return finite(n.op=="SUM"?sum:sum/static_cast<double>(count));
         }
         if(n.op=="SHEET") {

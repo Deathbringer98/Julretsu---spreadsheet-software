@@ -175,10 +175,12 @@ std::vector<HealthIssue> check_sheet_health(const Sheet& sheet,std::size_t max_i
         for(const auto& [r,cell]:cells) {
             auto n=number_input(*cell); if(!n||*n==0) continue;
             const double ratio=std::abs(*n)/typical; if(ratio<50&&ratio>1.0/50) continue;
+            // The note compares against the other cells only, so it can disagree on borderline values.
+            auto note=outlier_note(sheet,{r,c}); if(!note) continue;
             if(++reported>3) break;
             HealthIssue issue; issue.kind=HealthKind::Outlier; issue.cell={r,c};
             issue.title=trf("%s looks out of scale (%s)",a1({r,c}).c_str(),amount(*n).c_str());
-            issue.detail=*outlier_note(sheet,{r,c});
+            issue.detail=std::move(*note);
             add(std::move(issue));
         }
     }

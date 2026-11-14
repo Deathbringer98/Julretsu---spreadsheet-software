@@ -216,6 +216,18 @@ if(JULRETSU_BUILD_GUI)
       set(CPACK_DEBIAN_PACKAGE_DEPENDS "libgl1, libx11-6")
       set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "zenity, fonts-dejavu-core, fonts-noto-cjk")
     endif()
+    if(APPLE)
+      # Ad-hoc sign the finished bundle (last, so nothing changes inside it afterwards). Apple silicon refuses
+      # to run unsigned code; this is not a notarized signature, so first launch still needs Open Anyway.
+      install(CODE "
+        set(bundle \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/Julretsu.app\")
+        if(EXISTS \"\${bundle}\")
+          execute_process(COMMAND codesign --force --deep --sign - \"\${bundle}\" RESULT_VARIABLE signed ERROR_QUIET OUTPUT_QUIET)
+          if(NOT signed EQUAL 0)
+            message(WARNING \"Could not ad-hoc sign Julretsu.app\")
+          endif()
+        endif()")
+    endif()
     include(CPack)
   endif()
 endif()

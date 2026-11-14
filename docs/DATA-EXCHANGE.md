@@ -26,7 +26,7 @@ carries over and what does not.
 | Feature | Import | Export |
 | --- | --- | --- |
 | Numbers, text, TRUE/FALSE | Yes (shared and inline strings) | Yes |
-| Formulas | "Cached values" mode: Excel's last calculated results. "Supported formulas" mode: arithmetic, comparisons, SUM, AVERAGE and IF become live formulas; anything else keeps its cached value | Arithmetic, comparisons, SUM, AVERAGE, IF. Lua and other formulas export as values |
+| Formulas | "Cached values" mode: Excel's last calculated results. "Supported formulas" mode: arithmetic, comparisons, SUM, AVERAGE, MIN, MAX, COUNT, ROUND, ABS and IF become live formulas; anything else keeps its cached value | Arithmetic, comparisons, SUM, AVERAGE, MIN, MAX, COUNT, ROUND, ABS, IF. Lua and other formulas export as values |
 | Errors | Imported as text | Excel error codes; Julretsu-only errors become #VALUE! |
 | Bold, text colour, fill colour | Yes, when a whole row shares one style | Yes (row styles) |
 | Decimal places | Excel formats 0 and 0.00 | 0 or 2 places |

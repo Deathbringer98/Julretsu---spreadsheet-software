@@ -74,7 +74,7 @@ std::string_view error_display(ErrorCode c) noexcept {
     return "#ERROR!";
 }
 std::string display(const Value& v) {
-    if(auto p=std::get_if<double>(&v)) { std::ostringstream s; s.precision(15); s<<*p; return s.str(); }
+    if(auto p=std::get_if<double>(&v)) { std::ostringstream s; s.imbue(std::locale::classic()); s.precision(15); s<<*p; return s.str(); }
     if(auto p=std::get_if<bool>(&v)) return *p?"TRUE":"FALSE";
     if(auto p=std::get_if<std::string>(&v)) return *p;
     if(auto p=std::get_if<CellError>(&v)) return std::string(error_display(p->code));

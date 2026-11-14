@@ -190,7 +190,7 @@ CommitResult Sheet::apply(const Batch& requested) {
             candidates.insert_or_assign(edit.coord,std::move(cell));
         }
         for(const auto& edit:batch.rows)
-            if(edit.row>=max_rows || (edit.style&&edit.style->decimals>15))
+            if(edit.row>=max_rows || (edit.style&&edit.style->decimals>12))
                 return reject(ErrorCode::Value,"Invalid row style");
         for(const auto& edit:batch.formats)
             if(!edit.coord.valid()||(edit.style&&(edit.style->decimals>12||edit.style->alignment>3||edit.style->number_format>5||edit.style->font_size<8||edit.style->font_size>36||edit.style->font_family>2)))
