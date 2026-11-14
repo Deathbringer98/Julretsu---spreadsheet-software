@@ -52,8 +52,10 @@ This is an editable native MVP, not a complete Excel replacement.
   (universal, macOS 13.3+), `Julretsu-1.2.1-linux-amd64.deb` and `Julretsu-1.2.1-linux-x86_64.tar.gz`.
   Pushing a `v*` tag attaches them to a draft GitHub release.
   **Opening the Mac app:** open the `.dmg` and drag Julretsu to Applications. The app is signed ad hoc but not
-  notarized by Apple, so the first launch needs Control-click > Open, or System Settings > Privacy & Security >
-  Open Anyway. If macOS says the app is damaged, run `xattr -cr /Applications/Julretsu.app` once.
+  notarized by Apple, so macOS may say it is "damaged". It is not. Run `xattr -cr /Applications/Julretsu.app`
+  in Terminal once, then open it (if Terminal says Operation not permitted, allow Terminal under System Settings >
+  Privacy & Security > App Management). An "unidentified developer" message is cleared with Open Anyway in
+  Privacy & Security.
   Cmd works for copy, paste, undo and save. The macOS file dialogs use AppleScript.
 - **Manuals:** `docs/Julretsu-User-Manual.pdf` (English), `-ko.pdf` (Korean) and `-ja.pdf` (Japanese),
   generated from the HTML in `docs/manual/` (screenshots come from
