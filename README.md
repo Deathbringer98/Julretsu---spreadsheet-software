@@ -1,4 +1,4 @@
-# Julretsu 1.2.1
+# Julretsu 1.2.2
 ### A native spreadsheet workbench
 
 **English** · [한국어](README.ko.md) · [日本語](README.ja.md)
@@ -11,7 +11,7 @@ It also builds for macOS (universal, Apple silicon and Intel) and Linux through 
 
 ## Start the app
 Double-click **Start Julretsu.cmd** in this folder, or open
-**release/Julretsu-1.2.1/Julretsu.exe**. Keep the supplied DLLs beside the executable.
+**release/Julretsu-1.2.2/Julretsu.exe**. Keep the supplied DLLs beside the executable.
 
 [Quick start and controls](docs/QUICKSTART.md) ·
 [Steps 3–4 acceptance report](docs/ACCEPTANCE-0.2.md) ·
@@ -44,12 +44,12 @@ This is an editable native MVP, not a complete Excel replacement.
   Credential Manager, validated edit proposals reviewed before one-step, undoable apply.
 - A portable Windows package with runtime DLLs and dependency license notices.
 
-## Installers (1.2.1)
-- **Windows:** `.\package.ps1` builds `release/Julretsu-1.2.1-Windows-Setup.exe`, a single-file per-user
+## Installers (1.2.2)
+- **Windows:** `.\package.ps1` builds `release/Julretsu-1.2.2-Windows-Setup.exe`, a single-file per-user
   installer with license page, Start menu and desktop shortcuts, `.julretsu` file association and an
   uninstaller in Settings > Apps.
-- **macOS and Linux:** the `Installers` GitHub Actions workflow builds `Julretsu-1.2.1-macOS.dmg`
-  (universal, macOS 13.3+), `Julretsu-1.2.1-linux-amd64.deb` and `Julretsu-1.2.1-linux-x86_64.tar.gz`.
+- **macOS and Linux:** the `Installers` GitHub Actions workflow builds `Julretsu-1.2.2-macOS.dmg`
+  (universal, macOS 13.3+), `Julretsu-1.2.2-linux-amd64.deb` and `Julretsu-1.2.2-linux-x86_64.tar.gz`.
   Pushing a `v*` tag attaches them to a draft GitHub release.
   **Opening the Mac app:** open the `.dmg`, drag Julretsu to Applications (do not run it from the disk image) and eject the image. The app is signed ad hoc but not
   notarized by Apple, so macOS may say it is "damaged". It is not. Run `xattr -cr /Applications/Julretsu.app`

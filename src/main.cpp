@@ -120,12 +120,19 @@ bool add_face(const std::vector<FontFace>& candidates,float size,const ImWchar* 
 // The size to lay the interface out at. Windows and Linux windows are measured in pixels, so a 150% display
 // needs everything 1.5x bigger. macOS windows are measured in points and the system already doubles Retina
 // pixels, so layout stays 1x there; only the font is rasterized sharper (see font()).
-float layout_scale(float content_scale) {
+// JULRETSU_POINT_LAYOUT=1 and JULRETSU_FORCE_CONTENT_SCALE=2 let tests mimic a Retina Mac on any system.
+bool point_layout() {
 #ifdef __APPLE__
-    (void)content_scale; return 1.0f;
+    return true;
 #else
-    return content_scale;
+    static const bool forced=std::getenv("JULRETSU_POINT_LAYOUT")!=nullptr; return forced;
 #endif
+}
+float layout_scale(float content_scale) { return point_layout()?1.0f:content_scale; }
+float content_scale_of(float x,float y) {
+    float scale=std::clamp(std::max(x,y),1.0f,2.5f);
+    if(const char* forced=std::getenv("JULRETSU_FORCE_CONTENT_SCALE")) { const float f=float(std::atof(forced)); if(f>=1&&f<=2.5f) scale=f; }
+    return scale;
 }
 void font(float scale) {
     auto& io=ImGui::GetIO(); io.Fonts->Clear();
@@ -201,8 +208,10 @@ std::size_t memory_bytes() {
 }
 #ifdef __APPLE__
 constexpr int WINDOW_W=1280, WINDOW_H=800; // points; fits a 13-inch MacBook with room for the menu bar and Dock
+constexpr const char* WINDOW_TITLE="Julretsu " JULRETSU_VERSION " - Spreadsheet"; // the version in the title shows which build is running
 #else
 constexpr int WINDOW_W=1580, WINDOW_H=960;
+constexpr const char* WINDOW_TITLE="Julretsu - Spreadsheet";
 #endif
 int main(int argc,char** argv) {
     bool smoke=false, benchmark=false, show=false, no_splash=false, system_titlebar=false;
@@ -255,7 +264,7 @@ int main(int argc,char** argv) {
         // Show the first rendered frame instead of a blank startup window.
         glfwWindowHint(GLFW_VISIBLE,GLFW_FALSE);
         using Window=std::unique_ptr<GLFWwindow,decltype(&glfwDestroyWindow)>;
-        Window window(glfwCreateWindow(WINDOW_W,WINDOW_H,"Julretsu - Spreadsheet",nullptr,nullptr),glfwDestroyWindow);
+        Window window(glfwCreateWindow(WINDOW_W,WINDOW_H,WINDOW_TITLE,nullptr,nullptr),glfwDestroyWindow);
         if(!window) throw std::runtime_error("OpenGL window creation failed.");
         glfwSetWindowSizeLimits(window.get(),1100,640,GLFW_DONT_CARE,GLFW_DONT_CARE);
         julretsu::WindowFrame window_frame;
@@ -270,7 +279,7 @@ int main(int argc,char** argv) {
         auto& io=ImGui::GetIO(); io.IniFilename=nullptr;
         io.ConfigFlags|=ImGuiConfigFlags_NavEnableKeyboard;
         float sx=1,sy=1; glfwGetWindowContentScale(window.get(),&sx,&sy);
-        float scale=std::clamp(std::max(sx,sy),1.0f,2.5f);
+        float scale=content_scale_of(sx,sy);
         // Tests and manual screenshots are English unless a language is asked for.
         julretsu::set_language(!language_code.empty()?julretsu::language_from_code(language_code):
             (smoke||benchmark||!manual_dir.empty())?julretsu::Language::English:julretsu::GridUI::saved_language());
@@ -374,7 +383,7 @@ int main(int argc,char** argv) {
                 else break;
             }
             glfwGetWindowContentScale(window.get(),&sx,&sy);
-            const float new_scale=std::clamp(std::max(sx,sy),1.0f,2.5f);
+            const float new_scale=content_scale_of(sx,sy);
             if(new_scale!=scale) {
                 scale=new_scale; theme(layout_scale(scale),app.dark()); font(scale);
                 ImGui_ImplOpenGL3_DestroyFontsTexture(); ImGui_ImplOpenGL3_CreateFontsTexture();
@@ -617,6 +626,10 @@ int main(int argc,char** argv) {
         if(frame_limit) {
             std::sort(frames.begin(),frames.end());
             auto percentile=[&](double p){return frames[std::min(frames.size()-1,std::size_t(std::ceil(double(frames.size())*p))-1)];};
+            int window_w{},window_h{},frame_w{},frame_h{}; glfwGetWindowSize(window.get(),&window_w,&window_h); glfwGetFramebufferSize(window.get(),&frame_w,&frame_h);
+            std::cout<<"display: window_points="<<window_w<<"x"<<window_h<<" framebuffer="<<frame_w<<"x"<<frame_h<<" content_scale="<<scale
+                     <<" layout_scale="<<layout_scale(scale)<<" font_global_scale="<<io.FontGlobalScale<<" imgui_display="<<io.DisplaySize.x<<"x"<<io.DisplaySize.y
+                     <<" imgui_fb_scale="<<io.DisplayFramebufferScale.x<<"\n";
             std::cout<<"Julretsu native "<<(smoke?"smoke":"benchmark")<<"\n"
                      <<"window=1580x960 dpi_scale="<<scale<<" populated_cells="<<app.sheet().populated_cells()
                      <<" logical_rows="<<julretsu::max_rows<<" samples="<<frames.size()<<" vsync=off\n"
